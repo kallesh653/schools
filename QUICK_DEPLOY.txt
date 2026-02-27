@@ -1,0 +1,95 @@
+================================================================================
+    SCHOOL MANAGEMENT SYSTEM - QUICK DEPLOYMENT COMMANDS
+================================================================================
+
+🔒 STEP 0: CHANGE YOUR VPS PASSWORD FIRST!
+----------------------------------------
+ssh root@194.164.149.8
+passwd
+[Enter new secure password]
+
+
+📤 STEP 1: UPLOAD FILES TO VPS
+----------------------------------------
+Use WinSCP or FileZilla:
+  Host: 194.164.149.8
+  User: root
+  Password: [YOUR NEW PASSWORD]
+
+Upload 'schoolmk1.0' folder to: /root/school-management
+
+
+🚀 STEP 2: RUN AUTOMATED DEPLOYMENT
+----------------------------------------
+ssh root@194.164.149.8
+
+cd /root/school-management
+chmod +x deploy-vps.sh deploy-app.sh
+
+# Install all software (20-30 minutes)
+bash deploy-vps.sh
+
+# Move files
+mv /root/school-management /opt/school-management
+
+# Deploy application (10-15 minutes)
+cd /opt/school-management
+bash deploy-app.sh
+
+
+✅ STEP 3: ACCESS YOUR APPLICATION
+----------------------------------------
+Admin Web:    http://194.164.149.8
+Backend API:  http://194.164.149.8/api
+
+Login:
+  Username: admin
+  Password: admin123
+
+
+📱 STEP 4: UPDATE MOBILE APPS (Optional)
+----------------------------------------
+Change API URL in both apps to: http://194.164.149.8/api
+
+Files to update:
+  teacher-app/src/services/api.js
+  parent-app/src/services/api.js
+
+
+🔧 USEFUL COMMANDS
+----------------------------------------
+View backend logs:     pm2 logs school-backend
+Restart backend:       pm2 restart school-backend
+View Nginx logs:       tail -f /var/log/nginx/error.log
+Restart Nginx:         systemctl restart nginx
+Oracle status:         systemctl status oracle-xe-21c
+Connect to Oracle:     sqlplus school_admin/school_admin@localhost:1521/XE
+
+
+⚠️  SECURITY REMINDERS
+----------------------------------------
+1. Change VPS root password immediately
+2. Change all default application passwords
+3. Setup SSL/HTTPS with Let's Encrypt
+4. Configure firewall properly
+5. Setup automated backups
+
+
+📞 IF SOMETHING GOES WRONG
+----------------------------------------
+Check logs:
+  pm2 logs school-backend
+  tail -f /var/log/nginx/error.log
+  journalctl -u oracle-xe-21c
+
+Restart everything:
+  pm2 restart school-backend
+  systemctl restart nginx
+  systemctl restart oracle-xe-21c
+
+
+================================================================================
+    THAT'S IT! YOUR SCHOOL MANAGEMENT SYSTEM IS NOW LIVE!
+================================================================================
+
+Full documentation: VPS_DEPLOYMENT_GUIDE.md

@@ -1,0 +1,40 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Expo
+**/.expo/
+**/dist/
+**/web-build/
+
+# Backend build artifacts
+backend/target/
+backend/.mvn/
+*.class
+*.jar
+!parent-app/school-parent.keystore
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Temp files
+nul
+*.orig.*
+
+# QR images (generated)
+*-QR.png
+UsersLEN0VO*.png

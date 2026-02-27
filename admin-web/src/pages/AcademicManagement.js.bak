@@ -1,0 +1,238 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Tab,
+  Tabs,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+} from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
+import { academicAPI } from '../services/api';
+
+function TabPanel({ children, value, index }) {
+  return value === index ? <Box sx={{ p: 3 }}>{children}</Box> : null;
+}
+
+export default function AcademicManagement() {
+  const [tabValue, setTabValue] = useState(0);
+  const [years, setYears] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [formData, setFormData] = useState({});
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [yearsRes, classesRes, sectionsRes, subjectsRes] = await Promise.all([
+        academicAPI.getYears(),
+        academicAPI.getClasses(),
+        academicAPI.getSections(),
+        academicAPI.getSubjects(),
+      ]);
+      setYears(yearsRes.data);
+      setClasses(classesRes.data);
+      setSections(sectionsRes.data);
+      setSubjects(subjectsRes.data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
+
+  const handleAdd = (type) => {
+    setFormData({});
+    setOpenDialog(type);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (openDialog === 'year') {
+        await academicAPI.createYear(formData);
+      } else if (openDialog === 'class') {
+        await academicAPI.createClass(formData);
+      } else if (openDialog === 'section') {
+        await academicAPI.createSection(formData);
+      } else if (openDialog === 'subject') {
+        await academicAPI.createSubject(formData);
+      }
+      setOpenDialog(false);
+      loadData();
+    } catch (error) {
+      console.error('Error saving:', error);
+    }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h4" gutterBottom>
+        Academic Management
+      </Typography>
+
+      <Paper sx={{ mt: 3 }}>
+        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+          <Tab label="Academic Years" />
+          <Tab label="Classes" />
+          <Tab label="Sections" />
+          <Tab label="Subjects" />
+        </Tabs>
+
+        <TabPanel value={tabValue} index={0}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleAdd('year')}
+          >
+            Add Academic Year
+          </Button>
+          <TableContainer sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Start Date</TableCell>
+                  <TableCell>End Date</TableCell>
+                  <TableCell>Active</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {years.map((year) => (
+                  <TableRow key={year.id}>
+                    <TableCell>{year.name}</TableCell>
+                    <TableCell>{year.startDate}</TableCell>
+                    <TableCell>{year.endDate}</TableCell>
+                    <TableCell>{year.isActive ? 'Yes' : 'No'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleAdd('class')}
+          >
+            Add Class
+          </Button>
+          <TableContainer sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Code</TableCell>
+                  <TableCell>Capacity</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {classes.map((cls) => (
+                  <TableRow key={cls.id}>
+                    <TableCell>{cls.name}</TableCell>
+                    <TableCell>{cls.code}</TableCell>
+                    <TableCell>{cls.capacity}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleAdd('section')}
+          >
+            Add Section
+          </Button>
+          <TableContainer sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Capacity</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sections.map((section) => (
+                  <TableRow key={section.id}>
+                    <TableCell>{section.name}</TableCell>
+                    <TableCell>{section.capacity}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleAdd('subject')}
+          >
+            Add Subject
+          </Button>
+          <TableContainer sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Code</TableCell>
+                  <TableCell>Max Marks</TableCell>
+                  <TableCell>Pass Marks</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {subjects.map((subject) => (
+                  <TableRow key={subject.id}>
+                    <TableCell>{subject.name}</TableCell>
+                    <TableCell>{subject.code}</TableCell>
+                    <TableCell>{subject.maxMarks}</TableCell>
+                    <TableCell>{subject.passMarks}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+      </Paper>
+
+      <Dialog open={!!openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Add {openDialog}</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Name"
+            value={formData.name || ''}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={handleSave} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
