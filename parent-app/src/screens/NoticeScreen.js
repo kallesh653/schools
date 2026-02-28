@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, RefreshControl } from 'react-nativ
 import { Card, Text, Chip } from 'react-native-paper';
 import { noticeAPI } from '../services/api';
 import ScreenHeader from '../components/ScreenHeader';
+import { markSeen, SECTIONS } from '../utils/notifications';
 
 export default function NoticeScreen({ navigation }) {
   const [notices, setNotices] = useState([]);
@@ -10,6 +11,7 @@ export default function NoticeScreen({ navigation }) {
 
   useEffect(() => {
     fetchNotices();
+    markSeen(SECTIONS.NOTICES);
   }, []);
 
   const fetchNotices = async () => {

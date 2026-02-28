@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { parentAPI, examinationAPI } from '../services/api';
 import ScreenHeader from '../components/ScreenHeader';
+import { markSeen, SECTIONS } from '../utils/notifications';
 
 const GRADE_COLORS = {
   'A+': '#1b5e20', 'A': '#2e7d32', 'B+': '#558b2f', 'B': '#7cb342',
@@ -26,6 +27,7 @@ export default function MarksScreen({ navigation }) {
   useEffect(() => {
     fetchChildren();
     fetchExaminations();
+    markSeen(SECTIONS.MARKS);
   }, []);
 
   useEffect(() => {

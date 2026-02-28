@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, RefreshControl, FlatList } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Alert, RefreshControl } from 'react-native';
 import { Card, Button, Portal, Dialog, TextInput, Text, Chip, ProgressBar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parentAPI, attendanceAPI } from '../services/api';
 import ScreenHeader from '../components/ScreenHeader';
+import { markSeen, SECTIONS } from '../utils/notifications';
 
 const STATUS_COLORS = {
   PRESENT: '#4CAF50',
@@ -31,12 +33,12 @@ export default function AttendanceScreen({ navigation }) {
   const [leaveStartDate, setLeaveStartDate] = useState('');
   const [leaveEndDate, setLeaveEndDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [selectedDate, setSelectedDate] = useState('');
 
-  useEffect(() => { fetchChildren(); }, []);
+  useEffect(() => { fetchChildren(); markSeen(SECTIONS.ATTENDANCE); }, []);
 
   useEffect(() => {
-    if (selectedChild) fetchAttendance();
+    if (selectedChild) { setSelectedDate(''); fetchAttendance(); }
   }, [selectedChild]);
 
   const fetchChildren = async () => {
@@ -76,9 +78,32 @@ export default function AttendanceScreen({ navigation }) {
 
   const attendancePercentage = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
 
-  const filteredRecords = filterStatus === 'ALL'
-    ? attendanceRecords
-    : attendanceRecords.filter(r => r.status === filterStatus);
+  // Build markedDates for Calendar
+  const markedDates = useMemo(() => {
+    const marks = {};
+    for (const record of attendanceRecords) {
+      if (!record.date) continue;
+      const color = STATUS_COLORS[record.status] || '#9e9e9e';
+      marks[record.date] = {
+        marked: true,
+        dotColor: color,
+        customStyles: {
+          container: { backgroundColor: selectedDate === record.date ? color : 'transparent', borderRadius: 18 },
+          text: { color: selectedDate === record.date ? 'white' : '#333', fontWeight: '700' },
+        },
+      };
+    }
+    if (selectedDate) {
+      marks[selectedDate] = {
+        ...(marks[selectedDate] || {}),
+        selected: true,
+        selectedColor: STATUS_COLORS[attendanceRecords.find(r => r.date === selectedDate)?.status] || '#1976d2',
+      };
+    }
+    return marks;
+  }, [attendanceRecords, selectedDate]);
+
+  const selectedRecord = selectedDate ? attendanceRecords.find(r => r.date === selectedDate) : null;
 
   const handleLeaveApplication = async () => {
     if (!leaveReason || !leaveStartDate || !leaveEndDate) {
@@ -111,7 +136,7 @@ export default function AttendanceScreen({ navigation }) {
           <Card.Content>
             <Text style={styles.label}>Select Child</Text>
             <View style={styles.pickerWrapper}>
-              <Picker selectedValue={selectedChild} onValueChange={v => { setSelectedChild(v); setFilterStatus('ALL'); }} style={styles.picker}>
+              <Picker selectedValue={selectedChild} onValueChange={v => { setSelectedChild(v); }} style={styles.picker}>
                 {children.map(child => (
                   <Picker.Item key={child.id} label={`${child.firstName} ${child.lastName}`} value={child.id.toString()} />
                 ))}
@@ -165,62 +190,71 @@ export default function AttendanceScreen({ navigation }) {
               </Card.Content>
             </Card>
 
-            {/* Filter Chips */}
+            {/* Calendar Card */}
             {attendanceRecords.length > 0 && (
               <Card style={styles.card}>
                 <Card.Content>
                   <View style={styles.cardTitleRow}>
-                    <MaterialCommunityIcons name="history" size={20} color="#1976d2" />
-                    <Text style={styles.cardTitle}>Attendance Records</Text>
+                    <MaterialCommunityIcons name="calendar-month" size={20} color="#1976d2" />
+                    <Text style={styles.cardTitle}>Attendance Calendar</Text>
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                    {['ALL', 'PRESENT', 'ABSENT', 'LATE', 'LEAVE'].map(status => (
-                      <Chip
-                        key={status}
-                        mode={filterStatus === status ? 'flat' : 'outlined'}
-                        style={[
-                          styles.filterChip,
-                          filterStatus === status && { backgroundColor: STATUS_COLORS[status] || '#1976d2' }
-                        ]}
-                        textStyle={{
-                          color: filterStatus === status ? 'white' : '#555',
-                          fontWeight: filterStatus === status ? '700' : '400',
-                          fontSize: 12,
-                        }}
-                        onPress={() => setFilterStatus(status)}
-                      >
-                        {status === 'ALL' ? `All (${attendanceRecords.length})` : `${status} (${attendanceRecords.filter(r => r.status === status).length})`}
-                      </Chip>
-                    ))}
-                  </ScrollView>
 
-                  {/* Attendance List */}
-                  {filteredRecords.map((record) => (
-                    <View key={record.id || record.date} style={[styles.recordRow, { borderLeftColor: STATUS_COLORS[record.status] || '#9e9e9e' }]}>
-                      <MaterialCommunityIcons
-                        name={STATUS_ICONS[record.status] || 'help-circle'}
-                        size={22}
-                        color={STATUS_COLORS[record.status] || '#9e9e9e'}
-                      />
-                      <View style={styles.recordInfo}>
-                        <Text style={styles.recordDate}>{record.date}</Text>
-                        {record.remarks ? <Text style={styles.recordRemarks}>{record.remarks}</Text> : null}
+                  {/* Legend */}
+                  <View style={styles.legendRow}>
+                    {[['PRESENT', '#4CAF50'], ['ABSENT', '#F44336'], ['LATE', '#FF9800'], ['LEAVE', '#9C27B0']].map(([status, color]) => (
+                      <View key={status} style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: color }]} />
+                        <Text style={styles.legendText}>{status}</Text>
                       </View>
-                      <Chip
-                        mode="flat"
-                        style={{ backgroundColor: STATUS_COLORS[record.status] || '#9e9e9e' }}
-                        textStyle={{ color: 'white', fontSize: 10, fontWeight: '700' }}
-                        compact
-                      >
-                        {record.status}
-                      </Chip>
-                    </View>
-                  ))}
+                    ))}
+                  </View>
 
-                  {filteredRecords.length === 0 && (
-                    <View style={styles.emptyState}>
-                      <MaterialCommunityIcons name="calendar-blank" size={36} color="#bdbdbd" />
-                      <Text style={styles.emptyText}>No {filterStatus !== 'ALL' ? filterStatus.toLowerCase() : ''} records</Text>
+                  <Calendar
+                    markingType="dot"
+                    markedDates={markedDates}
+                    onDayPress={(day) => {
+                      const dateStr = day.dateString;
+                      setSelectedDate(prev => prev === dateStr ? '' : dateStr);
+                    }}
+                    theme={{
+                      todayTextColor: '#1976d2',
+                      selectedDayBackgroundColor: '#1976d2',
+                      arrowColor: '#1976d2',
+                      textDayFontSize: 13,
+                      textMonthFontSize: 15,
+                      textDayHeaderFontSize: 12,
+                    }}
+                    style={styles.calendar}
+                  />
+
+                  {/* Detail card for selected date */}
+                  {selectedDate && (
+                    <View style={[
+                      styles.detailCard,
+                      { borderLeftColor: STATUS_COLORS[selectedRecord?.status] || '#bdbdbd' }
+                    ]}>
+                      {selectedRecord ? (
+                        <>
+                          <View style={styles.detailRow}>
+                            <MaterialCommunityIcons name="calendar" size={16} color="#555" />
+                            <Text style={styles.detailDate}>{selectedDate}</Text>
+                            <View style={{ flex: 1 }} />
+                            <Chip
+                              mode="flat"
+                              style={{ backgroundColor: STATUS_COLORS[selectedRecord.status] || '#9e9e9e' }}
+                              textStyle={{ color: 'white', fontWeight: '700', fontSize: 11 }}
+                              compact
+                            >
+                              {selectedRecord.status}
+                            </Chip>
+                          </View>
+                          {selectedRecord.remarks ? (
+                            <Text style={styles.detailRemarks}>Remarks: {selectedRecord.remarks}</Text>
+                          ) : null}
+                        </>
+                      ) : (
+                        <Text style={styles.noRecordText}>No attendance record for {selectedDate}</Text>
+                      )}
                     </View>
                   )}
                 </Card.Content>
@@ -272,14 +306,16 @@ const styles = StyleSheet.create({
   progressBar: { height: 10, borderRadius: 5 },
   warningRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: '#ffebee', padding: 8, borderRadius: 8 },
   warningText: { fontSize: 12, color: '#d32f2f', flex: 1 },
-  filterRow: { marginBottom: 12 },
-  filterChip: { marginRight: 8, marginBottom: 4 },
-  recordRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', borderLeftWidth: 3, paddingLeft: 10, marginBottom: 2, borderRadius: 4 },
-  recordInfo: { flex: 1 },
-  recordDate: { fontSize: 14, fontWeight: '600', color: '#333' },
-  recordRemarks: { fontSize: 12, color: '#888', marginTop: 2 },
-  emptyState: { alignItems: 'center', padding: 24, gap: 8 },
-  emptyText: { fontSize: 14, color: '#aaa' },
+  legendRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { fontSize: 11, color: '#555' },
+  calendar: { borderRadius: 8, marginBottom: 8 },
+  detailCard: { borderLeftWidth: 4, borderRadius: 8, backgroundColor: '#f8f9fa', padding: 12, marginTop: 8 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailDate: { fontSize: 14, fontWeight: '600', color: '#333' },
+  detailRemarks: { fontSize: 13, color: '#666', marginTop: 6 },
+  noRecordText: { fontSize: 13, color: '#999', fontStyle: 'italic' },
   leaveBtn: { margin: 12, marginTop: 4 },
   input: { marginBottom: 12 },
 });

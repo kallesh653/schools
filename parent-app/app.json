@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "School Parent",
+    "name": "EduConnect",
     "slug": "school-parent-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1565C0"
+      "backgroundColor": "#1a237e"
     },
     "platforms": [
       "ios",

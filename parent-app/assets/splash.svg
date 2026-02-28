@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1284" height="2778" viewBox="0 0 1284 2778">
+  <rect width="1284" height="2778" fill="#1a237e"/>
+  <!-- Decorative circles -->
+  <circle cx="1100" cy="200" r="300" fill="rgba(255,255,255,0.03)"/>
+  <circle cx="200" cy="2600" r="250" fill="rgba(255,179,0,0.05)"/>
+  <!-- Center logo -->
+  <circle cx="642" cy="1200" r="260" fill="rgba(255,255,255,0.08)" stroke="#FFB300" stroke-width="8" opacity="0.6"/>
+  <circle cx="642" cy="1200" r="200" fill="rgba(255,255,255,0.05)"/>
+  <!-- Book icon (simplified) -->
+  <rect x="500" y="1090" width="130" height="160" rx="10" fill="#FFB300"/>
+  <rect x="514" y="1102" width="102" height="136" rx="6" fill="#1a237e"/>
+  <rect x="654" y="1090" width="130" height="160" rx="10" fill="#FFB300" opacity="0.85"/>
+  <rect x="668" y="1102" width="102" height="136" rx="6" fill="#1565c0"/>
+  <!-- Graduation cap -->
+  <polygon points="642,1010 530,1070 642,1130 754,1070" fill="#FFB300"/>
+  <!-- App name -->
+  <text x="642" y="1540" font-size="90" font-weight="800" fill="#ffffff" text-anchor="middle" font-family="Arial" letter-spacing="2">EduConnect</text>
+  <text x="642" y="1610" font-size="44" fill="#FFB300" text-anchor="middle" font-family="Arial" letter-spacing="8">PARENT PORTAL</text>
+  <!-- Tagline -->
+  <text x="642" y="1680" font-size="30" fill="rgba(255,255,255,0.5)" text-anchor="middle" font-family="Arial" letter-spacing="2">Stay Connected · Stay Informed</text>
+</svg>
