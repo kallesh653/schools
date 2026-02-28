@@ -88,7 +88,7 @@ public class StudentController {
                     && request.getParentPassword() != null && !request.getParentPassword().trim().isEmpty()) {
                 boolean exists = userRepository.findByUsername(request.getParentUsername().trim()).isPresent();
                 if (!exists) {
-                    Role parentRole = roleRepository.findByName("PARENT")
+                    Role parentRole = roleRepository.findByName(Role.PARENT)
                             .orElseThrow(() -> new RuntimeException("PARENT role not found"));
                     User parentUser = new User();
                     parentUser.setUsername(request.getParentUsername().trim());
