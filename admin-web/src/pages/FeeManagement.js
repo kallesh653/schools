@@ -11,7 +11,7 @@ import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon,
   Receipt as ReceiptIcon, AccountBalance as AccountIcon, TrendingUp as TrendingIcon,
   Payment as PaymentIcon, DirectionsBus as BusIcon, Person as PersonIcon,
-  FileDownload as DownloadIcon,
+  FileDownload as DownloadIcon, CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { academicAPI, studentAPI, feeAPI, transportAPI } from '../services/api';
 import * as XLSX from 'xlsx';
@@ -87,6 +87,11 @@ export default function FeeManagement() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // Fee Status tab state
+  const [feeStatusClassFilter, setFeeStatusClassFilter] = useState('');
+  const [feeStatusSearch, setFeeStatusSearch] = useState('');
+  const [feeStatusPage, setFeeStatusPage] = useState(0);
 
   useEffect(() => { fetchInitialData(); }, []);
 
@@ -252,6 +257,31 @@ export default function FeeManagement() {
     ? students.filter(s => String(s.schoolClass?.id) === String(routeSearchClass))
     : students).filter(s => s.transportRoute);
 
+  // Compute per-student fee status from existing loaded data
+  const allFeeStatusData = students.map(student => {
+    const structure = feeStructures.find(s =>
+      String(s.schoolClass?.id) === String(student.schoolClass?.id) &&
+      (!activeYear || String(s.academicYear?.id) === String(activeYear?.id))
+    );
+    const totalFee = parseFloat(structure?.totalFee || 0);
+    const paid = payments
+      .filter(p => String(p.student?.id) === String(student.id))
+      .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const balance = Math.max(0, totalFee - paid);
+    const statusLabel = totalFee === 0 ? 'NO_STRUCTURE' : balance === 0 ? 'PAID' : paid > 0 ? 'PARTIAL' : 'PENDING';
+    return { student, totalFee, paid, balance, statusLabel };
+  });
+  const totalExpected = allFeeStatusData.reduce((sum, r) => sum + r.totalFee, 0);
+  const totalBalance = allFeeStatusData.reduce((sum, r) => sum + r.balance, 0);
+
+  const filteredFeeStatus = allFeeStatusData
+    .filter(r => !feeStatusClassFilter || String(r.student.schoolClass?.id) === String(feeStatusClassFilter))
+    .filter(r => {
+      if (!feeStatusSearch) return true;
+      const name = `${r.student.firstName || ''} ${r.student.lastName || ''}`.toLowerCase();
+      return name.includes(feeStatusSearch.toLowerCase()) || (r.student.admissionNo || '').toLowerCase().includes(feeStatusSearch.toLowerCase());
+    });
+
   const exportFeeStructuresToExcel = () => {
     const data = feeStructures.map(s => ({
       'Class': s.schoolClass?.name || '',
@@ -316,6 +346,47 @@ export default function FeeManagement() {
         </Grid>
       </Grid>
 
+      {/* Fee Overview: Expected / Collected / Balance */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ p: 2.5, borderRadius: 2, borderLeft: '5px solid #1565c0', bgcolor: '#e8f0fe' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Total Expected Fees
+            </Typography>
+            <Typography variant="h5" fontWeight={800} color="#1565c0" sx={{ mt: 0.5 }}>
+              ₹{totalExpected.toLocaleString()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">Based on fee structures × enrolled students</Typography>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ p: 2.5, borderRadius: 2, borderLeft: '5px solid #2e7d32', bgcolor: '#e8f5e9' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Total Collected
+            </Typography>
+            <Typography variant="h5" fontWeight={800} color="#2e7d32" sx={{ mt: 0.5 }}>
+              ₹{totalCollection.toLocaleString()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">All recorded payments</Typography>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ p: 2.5, borderRadius: 2, borderLeft: '5px solid #d32f2f', bgcolor: '#ffebee' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Balance Pending
+            </Typography>
+            <Typography variant="h5" fontWeight={800} color="#d32f2f" sx={{ mt: 0.5 }}>
+              ₹{totalBalance.toLocaleString()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {allFeeStatusData.filter(r => r.statusLabel === 'PENDING').length} Pending ·{' '}
+              {allFeeStatusData.filter(r => r.statusLabel === 'PARTIAL').length} Partial ·{' '}
+              {allFeeStatusData.filter(r => r.statusLabel === 'PAID').length} Paid
+            </Typography>
+          </Card>
+        </Grid>
+      </Grid>
+
       <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
         <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}
           sx={{ bgcolor: '#f8f9fa', '& .MuiTab-root': { fontWeight: 600, textTransform: 'none' } }}>
@@ -323,6 +394,7 @@ export default function FeeManagement() {
           <Tab label="Record Payment" />
           <Tab label="Payment History" />
           <Tab label="🚌 Van Fees (Routes)" />
+          <Tab label="📊 Fee Status" />
         </Tabs>
 
         {/* Tab 0: Fee Structures */}
@@ -646,6 +718,113 @@ export default function FeeManagement() {
             </Grid>
           </Grid>
         </TabPanel>
+
+        {/* Tab 4: Fee Status */}
+        <TabPanel value={tabValue} index={4}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a237e' }}>Student Fee Status</Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Chip label={`${allFeeStatusData.filter(r => r.statusLabel === 'PAID').length} Paid`} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 700 }} />
+              <Chip label={`${allFeeStatusData.filter(r => r.statusLabel === 'PARTIAL').length} Partial`} sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 700 }} />
+              <Chip label={`${allFeeStatusData.filter(r => r.statusLabel === 'PENDING').length} Pending`} sx={{ bgcolor: '#ffebee', color: '#c62828', fontWeight: 700 }} />
+              <Chip label={`${allFeeStatusData.filter(r => r.statusLabel === 'NO_STRUCTURE').length} No Structure`} sx={{ bgcolor: '#f5f5f5', color: '#888', fontWeight: 700 }} />
+            </Box>
+          </Box>
+
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Filter by Class</InputLabel>
+                <Select value={feeStatusClassFilter} onChange={e => { setFeeStatusClassFilter(e.target.value); setFeeStatusPage(0); }} label="Filter by Class">
+                  <MenuItem value=""><em>All Classes</em></MenuItem>
+                  {classes.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={5}>
+              <TextField
+                fullWidth size="small"
+                placeholder="Search by student name or admission no..."
+                value={feeStatusSearch}
+                onChange={e => { setFeeStatusSearch(e.target.value); setFeeStatusPage(0); }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" fontSize="small" /></InputAdornment> }}
+              />
+            </Grid>
+          </Grid>
+
+          <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Student Name</TableCell>
+                  <TableCell>Adm. No</TableCell>
+                  <TableCell>Class</TableCell>
+                  <TableCell align="right">Total Fee</TableCell>
+                  <TableCell align="right">Paid</TableCell>
+                  <TableCell align="right">Balance</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredFeeStatus.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                      <Typography color="text.secondary">No students found</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredFeeStatus
+                  .slice(feeStatusPage * rowsPerPage, feeStatusPage * rowsPerPage + rowsPerPage)
+                  .map(r => {
+                    const statusConfig = {
+                      PAID: { label: 'Paid', bgcolor: '#e8f5e9', color: '#2e7d32' },
+                      PARTIAL: { label: 'Partial', bgcolor: '#fff3e0', color: '#e65100' },
+                      PENDING: { label: 'Pending', bgcolor: '#ffebee', color: '#c62828' },
+                      NO_STRUCTURE: { label: 'No Structure', bgcolor: '#f5f5f5', color: '#888' },
+                    }[r.statusLabel] || { label: r.statusLabel, bgcolor: '#f5f5f5', color: '#888' };
+                    return (
+                      <TableRow key={r.student.id} hover>
+                        <TableCell><Typography fontWeight={500}>{r.student.firstName} {r.student.lastName}</Typography></TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{r.student.admissionNo || '-'}</TableCell>
+                        <TableCell>{r.student.schoolClass?.name || '-'}</TableCell>
+                        <TableCell align="right">
+                          <Typography fontWeight={600} color={r.totalFee > 0 ? 'text.primary' : 'text.disabled'}>
+                            {r.totalFee > 0 ? `₹${r.totalFee.toLocaleString()}` : '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography fontWeight={600} color="success.main">
+                            {r.paid > 0 ? `₹${r.paid.toLocaleString()}` : '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography fontWeight={700} color={r.balance > 0 ? 'error.main' : 'success.main'}>
+                            {r.balance > 0 ? `₹${r.balance.toLocaleString()}` : r.totalFee > 0 ? '✓ Clear' : '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={statusConfig.label}
+                            size="small"
+                            sx={{ fontWeight: 700, fontSize: 11, bgcolor: statusConfig.bgcolor, color: statusConfig.color }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            component="div"
+            count={filteredFeeStatus.length}
+            page={feeStatusPage}
+            onPageChange={(e, np) => setFeeStatusPage(np)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={e => { setRowsPerPage(parseInt(e.target.value, 10)); setFeeStatusPage(0); }}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+          />
+        </TabPanel>
+
       </Paper>
 
       {/* Fee Structure Dialog */}
@@ -679,6 +858,31 @@ export default function FeeManagement() {
                   InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }} />
               </Grid>
             ))}
+            {routes.length > 0 && (
+              <Grid item xs={12}>
+                <Box sx={{ p: 1.5, bgcolor: '#e8f4fd', borderRadius: 2, border: '1px dashed #1565c0', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <BusIcon sx={{ color: '#1565c0' }} />
+                  <Typography variant="body2" fontWeight={600} color="#1565c0">Auto-fill Transport Fee from Vehicle Route:</Typography>
+                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>Select Route</InputLabel>
+                    <Select
+                      onChange={e => {
+                        const r = routes.find(rt => rt.id === Number(e.target.value));
+                        if (r) setStructureForm(f => ({ ...f, transportFee: r.monthlyFee || '' }));
+                      }}
+                      label="Select Route"
+                      value=""
+                    >
+                      <MenuItem value="">-- Pick Route --</MenuItem>
+                      {routes.map(r => (
+                        <MenuItem key={r.id} value={r.id}>{r.routeName} — ₹{r.monthlyFee}/mo</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Typography variant="caption" color="text.secondary">Fills the Transport Fee field below</Typography>
+                </Box>
+              </Grid>
+            )}
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Installment Type</InputLabel>
