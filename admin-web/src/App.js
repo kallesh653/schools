@@ -14,6 +14,7 @@ import ExaminationManagement from './pages/ExaminationManagement';
 import HomeworkManagement from './pages/HomeworkManagement';
 import NoticeManagement from './pages/NoticeManagement';
 import ConfigurationManagement from './pages/ConfigurationManagement';
+import CommunicationManagement from './pages/CommunicationManagement';
 import Layout from './components/Layout';
 
 const theme = createTheme({
@@ -158,6 +159,7 @@ function AppRoutes() {
         <Route path="homework" element={<HomeworkManagement />} />
         <Route path="notices" element={<NoticeManagement />} />
         <Route path="configuration" element={<ConfigurationManagement />} />
+        <Route path="communication" element={<CommunicationManagement />} />
       </Route>
     </Routes>
   );

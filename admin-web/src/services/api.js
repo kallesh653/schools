@@ -144,6 +144,19 @@ export const feeAPI = {
     api.get(`/fees/reports/monthly?startDate=${startDate}&endDate=${endDate}`),
 };
 
+export const smsAPI = {
+  getStatus: () => api.get('/sms/status'),
+  getBalance: () => api.get('/sms/balance'),
+  getLogs: () => api.get('/sms/logs'),
+  sendCustom: (data) => api.post('/sms/send', data),
+  sendToClass: (data) => api.post('/sms/send-to-class', data),
+  sendAbsentAlert: (data) => api.post('/sms/absent-alert', data),
+  sendNoticeAlert: (id, data) => api.post(`/sms/notice/${id}`, data),
+  sendFeeReminder: (data) => api.post('/sms/fee-reminder', data),
+  previewAbsent: (params) => api.get('/sms/preview/absent', { params }),
+  previewFeePending: (params) => api.get('/sms/preview/fee-pending', { params }),
+};
+
 export const transportAPI = {
   getRoutes: () => api.get('/transport/routes'),
   getActiveRoutes: () => api.get('/transport/routes/active'),

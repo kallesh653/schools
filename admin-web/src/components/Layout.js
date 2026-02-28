@@ -30,6 +30,7 @@ import {
   Logout as LogoutIcon,
   AdminPanelSettings as AdminIcon,
   Settings as SettingsIcon,
+  Sms as SmsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -45,6 +46,7 @@ const menuItems = [
   { text: 'Examinations', icon: <AssignmentIcon />, path: '/examinations' },
   { text: 'Homework', icon: <BookIcon />, path: '/homework' },
   { text: 'Notices', icon: <NotificationsIcon />, path: '/notices' },
+  { text: 'Communication', icon: <SmsIcon />, path: '/communication' },
   { text: 'Configuration', icon: <SettingsIcon />, path: '/configuration' },
 ];
 

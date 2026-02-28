@@ -105,12 +105,21 @@ public class FeeController {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
-        AcademicYear activeYear = academicYearRepository.findByIsActiveTrue()
-                .orElseThrow(() -> new ResourceNotFoundException("No active academic year found"));
+        AcademicYear activeYear = academicYearRepository.findByIsActiveTrue().orElse(null);
+        if (activeYear == null) {
+            Map<String, Object> emptyStatus = new HashMap<>();
+            emptyStatus.put("totalFee", java.math.BigDecimal.ZERO);
+            emptyStatus.put("paidAmount", java.math.BigDecimal.ZERO);
+            emptyStatus.put("pendingAmount", java.math.BigDecimal.ZERO);
+            emptyStatus.put("feeStructure", null);
+            emptyStatus.put("payments", List.of());
+            emptyStatus.put("note", "No active academic year configured. Please set an active academic year in Configuration.");
+            return ResponseEntity.ok(emptyStatus);
+        }
 
-        FeeStructure structure = feeStructureRepository.findBySchoolClassAndAcademicYear(
-                student.getSchoolClass(), activeYear
-        ).orElse(null);
+        FeeStructure structure = student.getSchoolClass() != null
+                ? feeStructureRepository.findBySchoolClassAndAcademicYear(student.getSchoolClass(), activeYear).orElse(null)
+                : null;
 
         BigDecimal totalFee = structure != null && structure.getTotalFee() != null
                 ? BigDecimal.valueOf(structure.getTotalFee()) : BigDecimal.ZERO;
