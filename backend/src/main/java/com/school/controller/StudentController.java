@@ -123,9 +123,11 @@ public class StudentController {
             student.setParent(savedParent);
             if (request.getClassId() != null) { SchoolClass cls = new SchoolClass(); cls.setId(request.getClassId()); student.setSchoolClass(cls); }
             if (request.getSectionId() != null) { Section sec = new Section(); sec.setId(request.getSectionId()); student.setSection(sec); }
-            AcademicYear year = new AcademicYear();
-            year.setId(request.getAcademicYearId() != null ? request.getAcademicYearId() : 1L);
-            student.setAcademicYear(year);
+            if (request.getAcademicYearId() != null) {
+                AcademicYear year = new AcademicYear();
+                year.setId(request.getAcademicYearId());
+                student.setAcademicYear(year);
+            }
             return ResponseEntity.ok(studentRepository.save(student));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: " + e.getMessage()));

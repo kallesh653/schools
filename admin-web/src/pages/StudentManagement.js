@@ -31,6 +31,7 @@ export default function StudentManagement() {
   const [classes, setClasses] = useState([]);
   const [sections, setSections] = useState([]);
   const [allSections, setAllSections] = useState([]);
+  const [activeAcademicYearId, setActiveAcademicYearId] = useState(null);
   const [loading, setLoading] = useState(true); // eslint-disable-line no-unused-vars
   const [openDialog, setOpenDialog] = useState(false);
   const [openViewDialog, setOpenViewDialog] = useState(false);
@@ -60,14 +61,19 @@ export default function StudentManagement() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [studentsRes, classesRes, sectionsRes] = await Promise.all([
+      const [studentsRes, classesRes, sectionsRes, yearsRes] = await Promise.all([
         studentAPI.getAll(),
         academicAPI.getClasses(),
-        academicAPI.getSections()
+        academicAPI.getSections(),
+        academicAPI.getYears().catch(() => ({ data: [] })),
       ]);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
       setAllSections(sectionsRes.data);
+      // Use active year, or first year, or null
+      const years = yearsRes.data || [];
+      const activeYear = years.find(y => y.isActive) || years[0] || null;
+      setActiveAcademicYearId(activeYear ? activeYear.id : null);
     } catch (error) {
       showSnackbar('Error loading data', 'error');
     } finally {
@@ -82,12 +88,22 @@ export default function StudentManagement() {
   const handleOpenDialog = (student = null) => {
     if (student) {
       setIsEdit(true);
+      // Only store the fields we need in formData — avoid spreading full entity objects
       setFormData({
-        ...student,
+        ...initialFormState,
+        id: student.id,
+        firstName: student.firstName || '',
+        lastName: student.lastName || '',
+        dateOfBirth: student.dateOfBirth || '',
+        gender: student.gender || '',
+        bloodGroup: student.bloodGroup || '',
+        address: student.address || '',
+        phone: student.phone || '',
+        email: student.email || '',
+        rollNo: student.rollNo || '',
+        admissionDate: student.admissionDate || '',
         schoolClass: student.schoolClass?.id || '',
         section: student.section?.id || '',
-        dateOfBirth: student.dateOfBirth || '',
-        admissionDate: student.admissionDate || ''
       });
     } else {
       setIsEdit(false);
@@ -115,28 +131,67 @@ export default function StudentManagement() {
   const handleSubmit = async () => {
     try {
       if (isEdit) {
-        const data = {
-          ...formData,
-          schoolClass: formData.schoolClass ? { id: parseInt(formData.schoolClass) } : null,
-          section: formData.section ? { id: parseInt(formData.section) } : null,
+        // Build clean Student update payload — only the fields PUT endpoint accepts
+        const classId = formData.schoolClass ? parseInt(formData.schoolClass) : null;
+        const sectionId = formData.section ? parseInt(formData.section) : null;
+        const updateData = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          dateOfBirth: formData.dateOfBirth || null,
+          gender: formData.gender || null,
+          bloodGroup: formData.bloodGroup || null,
+          address: formData.address || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+          rollNo: formData.rollNo || null,
+          admissionDate: formData.admissionDate || null,
+          schoolClass: classId ? { id: classId } : null,
+          section: sectionId ? { id: sectionId } : null,
         };
-        await studentAPI.update(formData.id, data);
+        await studentAPI.update(formData.id, updateData);
         showSnackbar('Student updated successfully');
       } else {
-        // New student: send DTO with classId/sectionId and parent credentials
-        const data = {
-          ...formData,
-          classId: formData.schoolClass ? parseInt(formData.schoolClass) : null,
-          sectionId: formData.section ? parseInt(formData.section) : null,
-          academicYearId: 1,
+        // Build clean CreateStudentRequest payload
+        const classId = formData.schoolClass ? parseInt(formData.schoolClass) : null;
+        const sectionId = formData.section ? parseInt(formData.section) : null;
+        const createData = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          dateOfBirth: formData.dateOfBirth || null,
+          gender: formData.gender || null,
+          bloodGroup: formData.bloodGroup || null,
+          address: formData.address || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+          rollNo: formData.rollNo || null,
+          admissionDate: formData.admissionDate || null,
+          classId: classId,
+          sectionId: sectionId,
+          academicYearId: activeAcademicYearId,
+          parentUsername: formData.parentUsername || null,
+          parentPassword: formData.parentPassword || null,
+          parentFullName: formData.parentFullName || null,
+          parentPhone: formData.parentPhone || null,
+          parentEmail: formData.parentEmail || null,
+          fatherName: formData.fatherName || null,
+          fatherPhone: formData.fatherPhone || null,
+          fatherEmail: formData.fatherEmail || null,
+          fatherOccupation: formData.fatherOccupation || null,
+          motherName: formData.motherName || null,
+          motherPhone: formData.motherPhone || null,
+          motherEmail: formData.motherEmail || null,
+          motherOccupation: formData.motherOccupation || null,
+          address2: formData.address2 || null,
+          emergencyContact: formData.emergencyContact || null,
         };
-        await studentAPI.create(data);
+        await studentAPI.create(createData);
         showSnackbar('Student added successfully! Parent login created.');
       }
       handleCloseDialog();
       loadData();
     } catch (error) {
-      showSnackbar(error.response?.data?.message || 'Error saving student', 'error');
+      const msg = error.response?.data?.message || error.response?.data || 'Error saving student';
+      showSnackbar(typeof msg === 'string' ? msg : 'Error saving student', 'error');
     }
   };
 

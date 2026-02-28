@@ -21,8 +21,12 @@ export default function LoginScreen({ onLogin }) {
     setLoading(true);
     try {
       const response = await authAPI.login({ username: username.trim(), password });
-      await AsyncStorage.setItem('token', response.data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.data));
+      const userData = response.data;
+      await AsyncStorage.setItem('token', userData.token);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await AsyncStorage.setItem('fullName', userData.fullName || userData.username || '');
+      await AsyncStorage.setItem('entityId', String(userData.entityId || ''));
+      await AsyncStorage.setItem('entityType', userData.entityType || '');
       onLogin();
     } catch (err) {
       setError('Invalid username or password. Please try again.');
