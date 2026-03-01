@@ -169,12 +169,18 @@ public class TeacherController {
     }
 
     /**
-     * Admin: get all teacher-subject-class assignments
+     * Admin: get all teacher-subject-class assignments — returns safe DTOs (no lazy entities)
      */
     @GetMapping("/assignments")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<TeacherSubjectAssignment>> getAllAssignments() {
-        return ResponseEntity.ok(assignmentRepository.findAll());
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getAllAssignments() {
+        List<TeacherSubjectAssignment> all = assignmentRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TeacherSubjectAssignment a : all) {
+            result.add(buildAssignmentMap(a));
+        }
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -216,12 +222,78 @@ public class TeacherController {
                 assignment.setSection(section);
             }
 
-            return ResponseEntity.ok(assignmentRepository.save(assignment));
+            TeacherSubjectAssignment saved = assignmentRepository.save(assignment);
+            return ResponseEntity.ok(buildAssignmentMap(saved));
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: " + e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error creating assignment: " + e.getMessage()));
         }
+    }
+
+    /** Build a clean, serializable map from a TeacherSubjectAssignment (avoids lazy/circular issues) */
+    private Map<String, Object> buildAssignmentMap(TeacherSubjectAssignment a) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", a.getId());
+
+        // Teacher (safe subset — no User/password)
+        Teacher t = a.getTeacher();
+        if (t != null) {
+            Map<String, Object> tm = new LinkedHashMap<>();
+            tm.put("id", t.getId());
+            tm.put("employeeId", t.getEmployeeId());
+            tm.put("firstName", t.getFirstName());
+            tm.put("lastName", t.getLastName());
+            tm.put("designation", t.getDesignation());
+            tm.put("specialization", t.getSpecialization());
+            tm.put("email", t.getEmail());
+            tm.put("phone", t.getPhone());
+            m.put("teacher", tm);
+        }
+
+        // Subject
+        com.school.entity.Subject s = a.getSubject();
+        if (s != null) {
+            Map<String, Object> sm = new LinkedHashMap<>();
+            sm.put("id", s.getId());
+            sm.put("name", s.getName());
+            sm.put("code", s.getCode());
+            sm.put("subjectType", s.getSubjectType());
+            m.put("subject", sm);
+        }
+
+        // Class
+        SchoolClass sc = a.getSchoolClass();
+        if (sc != null) {
+            Map<String, Object> cm = new LinkedHashMap<>();
+            cm.put("id", sc.getId());
+            cm.put("name", sc.getName());
+            cm.put("code", sc.getCode());
+            m.put("schoolClass", cm);
+        }
+
+        // Section (optional)
+        com.school.entity.Section sec = a.getSection();
+        if (sec != null) {
+            Map<String, Object> secm = new LinkedHashMap<>();
+            secm.put("id", sec.getId());
+            secm.put("name", sec.getName());
+            m.put("section", secm);
+        } else {
+            m.put("section", null);
+        }
+
+        // Academic Year
+        com.school.entity.AcademicYear ay = a.getAcademicYear();
+        if (ay != null) {
+            Map<String, Object> aym = new LinkedHashMap<>();
+            aym.put("id", ay.getId());
+            aym.put("name", ay.getName());
+            aym.put("isActive", ay.getIsActive());
+            m.put("academicYear", aym);
+        }
+
+        return m;
     }
 
     /**
