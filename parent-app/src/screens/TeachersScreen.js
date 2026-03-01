@@ -7,7 +7,6 @@ import { Text } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { parentAPI, teacherAPI } from '../services/api';
 import ScreenHeader from '../components/ScreenHeader';
 
@@ -23,13 +22,8 @@ const SUBJECT_COLORS = [
   { bg: '#e8eaf6', border: '#3949ab', text: '#283593' },
 ];
 
-const AVATAR_GRADIENTS = [
-  ['#1a237e', '#283593'],
-  ['#4a148c', '#6a1b9a'],
-  ['#b71c1c', '#c62828'],
-  ['#1b5e20', '#2e7d32'],
-  ['#e65100', '#bf360c'],
-  ['#006064', '#00838f'],
+const AVATAR_COLORS = [
+  '#1a237e', '#4a148c', '#b71c1c', '#1b5e20', '#e65100', '#006064',
 ];
 
 const CARD_ACCENTS = ['#1a237e', '#4a148c', '#c62828', '#2e7d32', '#e65100', '#00838f'];
@@ -85,7 +79,7 @@ function SkeletonCard() {
 // ─── TeacherCard ──────────────────────────────────────────────────────────────
 function TeacherCard({ teacher, index, anim }) {
   const initials = `${(teacher.firstName || '?')[0]}${(teacher.lastName || '?')[0]}`.toUpperCase();
-  const gradient = AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length];
+  const avatarColor = AVATAR_COLORS[index % AVATAR_COLORS.length];
   const accentColor = CARD_ACCENTS[index % CARD_ACCENTS.length];
 
   return (
@@ -98,9 +92,9 @@ function TeacherCard({ teacher, index, anim }) {
 
         {/* Header */}
         <View style={styles.cardHeader}>
-          <LinearGradient colors={gradient} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
             <Text style={styles.avatarText}>{initials}</Text>
-          </LinearGradient>
+          </View>
           <View style={styles.teacherMeta}>
             <Text style={styles.teacherName}>{teacher.firstName} {teacher.lastName}</Text>
             {teacher.employeeId ? (
@@ -324,8 +318,7 @@ export default function TeachersScreen({ navigation }) {
             opacity: bannerAnim,
             transform: [{ scale: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }],
           }]}>
-            <LinearGradient colors={['#1a237e', '#283593']} style={styles.classBannerGradient}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <View style={styles.classBannerGradient}>
               <View style={styles.classBannerLeft}>
                 <View style={styles.classIconBox}>
                   <MaterialCommunityIcons name="google-classroom" size={28} color="#FFB300" />
@@ -341,7 +334,7 @@ export default function TeachersScreen({ navigation }) {
                 <Text style={styles.teacherBadgeNum}>{teachers.length}</Text>
                 <Text style={styles.teacherBadgeLabel}>TEACHERS</Text>
               </View>
-            </LinearGradient>
+            </View>
           </Animated.View>
         ) : null}
 
@@ -452,7 +445,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12, marginBottom: 12, borderRadius: 18, overflow: 'hidden',
     elevation: 5, shadowColor: '#1a237e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10,
   },
-  classBannerGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
+  classBannerGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, backgroundColor: '#1a237e' },
   classBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   classIconBox: {
     width: 52, height: 52, borderRadius: 14,
