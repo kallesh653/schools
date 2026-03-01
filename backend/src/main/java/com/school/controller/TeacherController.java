@@ -27,6 +27,9 @@ public class TeacherController {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TeacherSubjectAssignmentRepository assignmentRepository;
     @Autowired private SchoolClassRepository classRepository;
+    @Autowired private com.school.repository.SubjectRepository subjectRepository;
+    @Autowired private com.school.repository.SectionRepository sectionRepository;
+    @Autowired private com.school.repository.AcademicYearRepository academicYearRepository;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
@@ -163,6 +166,74 @@ public class TeacherController {
             }
         }
         return ResponseEntity.ok(new ArrayList<>(teacherMap.values()));
+    }
+
+    /**
+     * Admin: get all teacher-subject-class assignments
+     */
+    @GetMapping("/assignments")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<TeacherSubjectAssignment>> getAllAssignments() {
+        return ResponseEntity.ok(assignmentRepository.findAll());
+    }
+
+    /**
+     * Admin: create a new teacher-subject-class assignment
+     */
+    @PostMapping("/assignments")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<?> createAssignment(@RequestBody Map<String, Object> req) {
+        try {
+            Long teacherId = Long.valueOf(req.get("teacherId").toString());
+            Long subjectId = Long.valueOf(req.get("subjectId").toString());
+            Long classId = Long.valueOf(req.get("classId").toString());
+            Long yearId = Long.valueOf(req.get("academicYearId").toString());
+
+            Teacher teacher = teacherRepository.findById(teacherId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
+            com.school.entity.Subject subject = subjectRepository.findById(subjectId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", subjectId));
+            SchoolClass schoolClass = classRepository.findById(classId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Class", "id", classId));
+            com.school.entity.AcademicYear academicYear = academicYearRepository.findById(yearId)
+                    .orElseThrow(() -> new ResourceNotFoundException("AcademicYear", "id", yearId));
+
+            if (assignmentRepository.existsByTeacherAndSubjectAndSchoolClass(teacher, subject, schoolClass)) {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("This teacher is already assigned to this subject in this class"));
+            }
+
+            TeacherSubjectAssignment assignment = new TeacherSubjectAssignment();
+            assignment.setTeacher(teacher);
+            assignment.setSubject(subject);
+            assignment.setSchoolClass(schoolClass);
+            assignment.setAcademicYear(academicYear);
+
+            if (req.get("sectionId") != null && !req.get("sectionId").toString().isEmpty()) {
+                Long sectionId = Long.valueOf(req.get("sectionId").toString());
+                com.school.entity.Section section = sectionRepository.findById(sectionId).orElse(null);
+                assignment.setSection(section);
+            }
+
+            return ResponseEntity.ok(assignmentRepository.save(assignment));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error creating assignment: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin: delete a teacher-subject-class assignment
+     */
+    @DeleteMapping("/assignments/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MessageResponse> deleteAssignment(@PathVariable Long id) {
+        assignmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", id));
+        assignmentRepository.deleteById(id);
+        return ResponseEntity.ok(new MessageResponse("Assignment removed successfully"));
     }
 
     private String generateEmployeeId() {

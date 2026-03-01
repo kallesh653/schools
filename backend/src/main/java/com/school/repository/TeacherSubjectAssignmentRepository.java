@@ -3,6 +3,7 @@ package com.school.repository;
 import com.school.entity.TeacherSubjectAssignment;
 import com.school.entity.Teacher;
 import com.school.entity.SchoolClass;
+import com.school.entity.Subject;
 import com.school.entity.AcademicYear;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -15,4 +16,5 @@ public interface TeacherSubjectAssignmentRepository extends JpaRepository<Teache
     List<TeacherSubjectAssignment> findBySchoolClass(SchoolClass schoolClass);
     List<TeacherSubjectAssignment> findByAcademicYear(AcademicYear academicYear);
     List<TeacherSubjectAssignment> findByTeacherAndAcademicYear(Teacher teacher, AcademicYear academicYear);
+    boolean existsByTeacherAndSubjectAndSchoolClass(Teacher teacher, Subject subject, SchoolClass schoolClass);
 }

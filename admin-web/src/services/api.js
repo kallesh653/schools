@@ -81,6 +81,9 @@ export const teacherAPI = {
   create: (data) => api.post('/teachers', data),
   update: (id, data) => api.put(`/teachers/${id}`, data),
   delete: (id) => api.delete(`/teachers/${id}`),
+  getAssignments: () => api.get('/teachers/assignments'),
+  createAssignment: (data) => api.post('/teachers/assignments', data),
+  deleteAssignment: (id) => api.delete(`/teachers/assignments/${id}`),
 };
 
 export const attendanceAPI = {
