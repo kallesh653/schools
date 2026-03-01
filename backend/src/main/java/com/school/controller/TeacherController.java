@@ -13,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/teachers")
@@ -25,6 +25,8 @@ public class TeacherController {
     @Autowired private UserRepository userRepository;
     @Autowired private RoleRepository roleRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private TeacherSubjectAssignmentRepository assignmentRepository;
+    @Autowired private SchoolClassRepository classRepository;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
@@ -117,6 +119,50 @@ public class TeacherController {
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", id));
         teacherRepository.delete(teacher);
         return ResponseEntity.ok(new MessageResponse("Teacher deleted successfully"));
+    }
+
+    /**
+     * Parent-accessible endpoint: get all teachers for a class with their subjects.
+     * Returns list of {teacher, subjects[]} objects grouped by teacher.
+     */
+    @GetMapping("/class/{classId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'PARENT')")
+    public ResponseEntity<?> getTeachersByClass(@PathVariable Long classId) {
+        SchoolClass schoolClass = classRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Class", "id", classId));
+        List<TeacherSubjectAssignment> assignments = assignmentRepository.findBySchoolClass(schoolClass);
+
+        // Group by teacher and collect subjects
+        Map<Long, Map<String, Object>> teacherMap = new LinkedHashMap<>();
+        for (TeacherSubjectAssignment a : assignments) {
+            Teacher t = a.getTeacher();
+            if (t == null || !Boolean.TRUE.equals(t.getActive())) continue;
+            teacherMap.computeIfAbsent(t.getId(), id -> {
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("id", t.getId());
+                info.put("employeeId", t.getEmployeeId());
+                info.put("firstName", t.getFirstName());
+                info.put("lastName", t.getLastName());
+                info.put("email", t.getEmail());
+                info.put("phone", t.getPhone());
+                info.put("designation", t.getDesignation());
+                info.put("qualification", t.getQualification());
+                info.put("specialization", t.getSpecialization());
+                info.put("subjects", new ArrayList<>());
+                return info;
+            });
+            if (a.getSubject() != null) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> subjects = (List<Map<String, Object>>) teacherMap.get(t.getId()).get("subjects");
+                Map<String, Object> subj = new LinkedHashMap<>();
+                subj.put("id", a.getSubject().getId());
+                subj.put("name", a.getSubject().getName());
+                subj.put("code", a.getSubject().getCode());
+                subj.put("subjectType", a.getSubject().getSubjectType());
+                subjects.add(subj);
+            }
+        }
+        return ResponseEntity.ok(new ArrayList<>(teacherMap.values()));
     }
 
     private String generateEmployeeId() {

@@ -16,6 +16,7 @@ const QUICK_ITEMS = [
   { label: 'Marks', icon: 'clipboard-text', screen: 'Marks', color: '#6a1b9a', light: '#f3e5f5', section: SECTIONS.MARKS },
   { label: 'Fees', icon: 'cash-multiple', screen: 'Fees', color: '#e65100', light: '#fff3e0', section: SECTIONS.FEES },
   { label: 'Homework', icon: 'book-open-page-variant', screen: 'Homework', color: '#c62828', light: '#ffebee', section: SECTIONS.HOMEWORK },
+  { label: 'Teachers', icon: 'account-tie', screen: 'Teachers', color: '#00695c', light: '#e0f2f1', section: null },
   { label: 'Notices', icon: 'bell-badge', screen: 'Notices', color: '#00838f', light: '#e0f7fa', section: SECTIONS.NOTICES },
   { label: 'Profile', icon: 'account-circle', screen: 'Profile', color: '#37474f', light: '#eceff1', section: null },
 ];
@@ -64,7 +65,7 @@ export default function DashboardScreen({ navigation, openDrawer }) {
   const noticesOpacity = useRef(new Animated.Value(0)).current;
 
   const cardAnims = useMemo(() =>
-    Array.from({ length: 6 }, () => ({
+    Array.from({ length: 7 }, () => ({
       scale: new Animated.Value(0.7),
       opacity: new Animated.Value(0),
     })), []);

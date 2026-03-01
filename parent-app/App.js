@@ -19,6 +19,7 @@ import FeeScreen from './src/screens/FeeScreen';
 import HomeworkScreen from './src/screens/HomeworkScreen';
 import NoticeScreen from './src/screens/NoticeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import TeachersScreen from './src/screens/TeachersScreen';
 
 const Stack = createStackNavigator();
 const { width, height } = Dimensions.get('window');
@@ -37,6 +38,7 @@ const drawerItems = [
   { name: 'Marks', icon: 'clipboard-text-outline', color: '#8e24aa', label: 'Marks & Results' },
   { name: 'Fees', icon: 'cash-multiple', color: '#e65100', label: 'Fee Payments' },
   { name: 'Homework', icon: 'book-open-page-variant-outline', color: '#d81b60', label: 'Homework' },
+  { name: 'Teachers', icon: 'account-tie-outline', color: '#00695c', label: 'Teachers' },
   { name: 'Notices', icon: 'bell-badge-outline', color: '#0097a7', label: 'Notices' },
   { name: 'Profile', icon: 'account-circle-outline', color: '#546e7a', label: 'My Profile' },
 ];
@@ -272,6 +274,7 @@ function MainApp({ onLogout }) {
           <Stack.Screen name="Marks" component={MarksScreen} />
           <Stack.Screen name="Fees" component={FeeScreen} />
           <Stack.Screen name="Homework" component={HomeworkScreen} />
+          <Stack.Screen name="Teachers" component={TeachersScreen} />
           <Stack.Screen name="Notices" component={NoticeScreen} />
           <Stack.Screen name="Profile">
             {(props) => <ProfileScreen {...props} onLogout={handleLogout} />}
