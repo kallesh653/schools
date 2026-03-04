@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text } from 'react-native-paper';
+import { View, StyleSheet, StatusBar, KeyboardAvoidingView, Platform, TouchableOpacity, Animated } from 'react-native';
+import { TextInput, Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../services/api';
@@ -22,6 +22,11 @@ export default function LoginScreen({ onLogin }) {
     try {
       const response = await authAPI.login({ username: username.trim(), password });
       const userData = response.data;
+      if (userData.role !== 'ROLE_PARENT' && userData.role !== 'PARENT') {
+        setError('This app is for parents only. Please use the Teacher App to login as a teacher.');
+        setLoading(false);
+        return;
+      }
       await AsyncStorage.setItem('token', userData.token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       await AsyncStorage.setItem('fullName', userData.fullName || userData.username || '');
@@ -36,23 +41,23 @@ export default function LoginScreen({ onLogin }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1565c0" />
+      <StatusBar barStyle="light-content" backgroundColor="#1a237e" />
 
-      {/* Header Background */}
+      {/* Header */}
       <View style={styles.headerBg}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <MaterialCommunityIcons name="school" size={48} color="#1565c0" />
-          </View>
+        <View style={styles.logoCircle}>
+          <MaterialCommunityIcons name="school" size={52} color="#1a237e" />
         </View>
-        <Text style={styles.appName}>School Parent</Text>
+        <Text style={styles.appName}>EduConnect</Text>
+        <Text style={styles.appSub}>Parent Portal</Text>
         <Text style={styles.tagline}>Stay connected with your child's education</Text>
       </View>
 
-      {/* Login Form */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.formContainer}>
+      {/* Form */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.formOuter}>
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Parent Login</Text>
+          <Text style={styles.formSubtitle}>Sign in to monitor your child's progress</Text>
 
           {error ? (
             <View style={styles.errorBox}>
@@ -70,8 +75,8 @@ export default function LoginScreen({ onLogin }) {
             left={<TextInput.Icon icon="account" />}
             autoCapitalize="none"
             autoCorrect={false}
-            outlineColor="#1565c0"
-            activeOutlineColor="#1565c0"
+            outlineColor="#c5cae9"
+            activeOutlineColor="#1a237e"
           />
           <TextInput
             label="Password"
@@ -87,25 +92,27 @@ export default function LoginScreen({ onLogin }) {
                 onPress={() => setShowPassword(!showPassword)}
               />
             }
-            outlineColor="#1565c0"
-            activeOutlineColor="#1565c0"
+            outlineColor="#c5cae9"
+            activeOutlineColor="#1a237e"
           />
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            buttonColor="#1565c0"
-            labelStyle={styles.buttonLabel}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Button>
 
-          <Text style={styles.helpText}>
-            Contact school admin if you need login credentials
-          </Text>
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={loading}
+            style={[styles.loginBtn, loading && { opacity: 0.7 }]}
+          >
+            {loading ? (
+              <MaterialCommunityIcons name="loading" size={22} color="#fff" />
+            ) : (
+              <MaterialCommunityIcons name="login" size={22} color="#fff" />
+            )}
+            <Text style={styles.loginBtnText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.helpRow}>
+            <MaterialCommunityIcons name="information-outline" size={14} color="#bbb" />
+            <Text style={styles.helpText}>Contact school admin if you need login credentials</Text>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -113,55 +120,50 @@ export default function LoginScreen({ onLogin }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1565c0' },
+  container: { flex: 1, backgroundColor: '#1a237e' },
   headerBg: {
-    flex: 0.45,
+    flex: 0.48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 20,
+    paddingTop: 16,
   },
-  logoContainer: { marginBottom: 16 },
   logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 100, height: 100, borderRadius: 50,
     backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3, shadowRadius: 12, elevation: 10,
+    marginBottom: 16,
   },
-  appName: { fontSize: 30, fontWeight: '800', color: 'white', letterSpacing: 0.5 },
-  tagline: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 6, textAlign: 'center', paddingHorizontal: 40 },
-  formContainer: { flex: 0.55 },
+  appName: { fontSize: 32, fontWeight: '800', color: 'white', letterSpacing: 1 },
+  appSub: { fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '600', letterSpacing: 3, marginTop: 2, marginBottom: 8 },
+  tagline: { fontSize: 13, color: 'rgba(255,255,255,0.7)', textAlign: 'center', paddingHorizontal: 40 },
+  formOuter: { flex: 0.52 },
   formCard: {
     flex: 1,
     backgroundColor: 'white',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 28,
-    paddingTop: 32,
+    paddingTop: 30,
     paddingBottom: 20,
+    elevation: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12,
   },
-  formTitle: { fontSize: 22, fontWeight: '700', color: '#1565c0', marginBottom: 20 },
+  formTitle: { fontSize: 24, fontWeight: '800', color: '#1a237e', marginBottom: 4 },
+  formSubtitle: { fontSize: 13, color: '#999', marginBottom: 20 },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#ffebee',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: '#c62828',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#ffebee', padding: 12, borderRadius: 10,
+    marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#c62828',
   },
   errorText: { fontSize: 13, color: '#c62828', flex: 1 },
   input: { marginBottom: 14, backgroundColor: 'white' },
-  button: { marginTop: 8, borderRadius: 12 },
-  buttonContent: { height: 50 },
-  buttonLabel: { fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
-  helpText: { textAlign: 'center', color: '#999', fontSize: 12, marginTop: 20 },
+  loginBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#1a237e', borderRadius: 12, paddingVertical: 14, marginTop: 4,
+  },
+  loginBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  helpRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', marginTop: 16 },
+  helpText: { fontSize: 12, color: '#bbb', flex: 1 },
 });
