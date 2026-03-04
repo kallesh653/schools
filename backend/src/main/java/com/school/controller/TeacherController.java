@@ -168,6 +168,28 @@ public class TeacherController {
         return ResponseEntity.ok(new ArrayList<>(teacherMap.values()));
     }
 
+
+    /**
+     * Teacher: get MY assignments (classes/subjects I'm assigned to teach)
+     */
+    @GetMapping("/my-assignments")
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getMyAssignments() {
+        String username = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null || user.getEntityId() == null) return ResponseEntity.ok(new ArrayList<>());
+        Teacher teacher = teacherRepository.findById(user.getEntityId()).orElse(null);
+        if (teacher == null) return ResponseEntity.ok(new ArrayList<>());
+        List<TeacherSubjectAssignment> assignments = assignmentRepository.findByTeacher(teacher);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TeacherSubjectAssignment a : assignments) {
+            result.add(buildAssignmentMap(a));
+        }
+        return ResponseEntity.ok(result);
+    }
+
     /**
      * Admin: get all teacher-subject-class assignments — returns safe DTOs (no lazy entities)
      */
