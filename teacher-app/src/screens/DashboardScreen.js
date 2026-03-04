@@ -27,6 +27,7 @@ function getTypeColor(t) {
 export default function DashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [classTeacherClasses, setClassTeacherClasses] = useState([]);
   const [homeworks, setHomeworks] = useState([]);
   const [notices, setNotices] = useState([]);
   const [todayStats, setTodayStats] = useState({ present: 0, absent: 0, total: 0 });
@@ -40,13 +41,15 @@ export default function DashboardScreen({ navigation }) {
     try {
       const userData = await AsyncStorage.getItem('user');
       if (userData) setUser(JSON.parse(userData));
-      const [asgRes, hwRes, noticeRes] = await Promise.all([
+      const [asgRes, hwRes, noticeRes, ctRes] = await Promise.all([
         teacherAPI.getMyAssignments().catch(() => ({ data: [] })),
         homeworkAPI.getAll().catch(() => ({ data: [] })),
         noticeAPI.getPublished().catch(() => ({ data: [] })),
+        teacherAPI.getMyClassTeacherInfo().catch(() => ({ data: [] })),
       ]);
       const myAssignments = asgRes.data || [];
       setAssignments(myAssignments);
+      setClassTeacherClasses(ctRes.data || []);
       setHomeworks((hwRes.data || []).slice(0, 4));
       setNotices((noticeRes.data || []).filter(n => n.targetAudience === 'ALL' || n.targetAudience === 'TEACHERS').slice(0, 3));
     } catch (e) {
@@ -119,6 +122,20 @@ export default function DashboardScreen({ navigation }) {
           ))}
         </View>
 
+        {/* Class Teacher Banner */}
+        {classTeacherClasses.length > 0 && (
+          <View style={styles.classTeacherBanner}>
+            <MaterialCommunityIcons name="star-circle" size={20} color="#fff" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.classTeacherTitle}>Class Teacher</Text>
+              <Text style={styles.classTeacherSub}>
+                {classTeacherClasses.map(c => 'Class ' + c.className).join(', ')}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
+          </View>
+        )}
+
         {/* My Classes */}
         {uniqueClasses.length > 0 && (
           <View style={styles.section}>
@@ -128,12 +145,21 @@ export default function DashboardScreen({ navigation }) {
                 const classSubjects = assignments.filter(a => a.schoolClass?.id === cls.id).map(a => a.subject?.name).filter(Boolean);
                 const colors = ['#1565c0', '#6a1b9a', '#ad1457', '#00838f', '#2e7d32', '#e65100'];
                 const color = colors[i % colors.length];
+                const isClassTeacher = classTeacherClasses.some(c => c.classId?.toString() === cls.id?.toString());
                 return (
                   <View key={cls.id} style={[styles.classCard, { borderTopColor: color }]}>
                     <View style={[styles.classIcon, { backgroundColor: color + '18' }]}>
                       <MaterialCommunityIcons name="google-classroom" size={22} color={color} />
                     </View>
-                    <Text style={[styles.className, { color }]}>Class {cls.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={[styles.className, { color }]}>Class {cls.name}</Text>
+                      {isClassTeacher && (
+                        <View style={[styles.ctBadge, { backgroundColor: color }]}>
+                          <MaterialCommunityIcons name="star" size={10} color="#fff" />
+                          <Text style={styles.ctBadgeText}>CT</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.classSubjects} numberOfLines={2}>{classSubjects.join(', ') || 'No subjects'}</Text>
                     <TouchableOpacity style={[styles.attendanceBtn, { backgroundColor: color }]}
                       onPress={() => navigation.navigate('Attendance')}>
@@ -278,4 +304,9 @@ const styles = StyleSheet.create({
   noticeDate: { fontSize: 11, color: '#999', marginTop: 2 },
   emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 24, alignItems: 'center', elevation: 1 },
   emptyText: { color: '#aaa', marginTop: 8, fontSize: 13 },
+  classTeacherBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 12, backgroundColor: '#f9a825', padding: 12, borderRadius: 12, elevation: 2 },
+  classTeacherTitle: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  classTeacherSub: { color: 'rgba(255,255,255,0.9)', fontSize: 12, marginTop: 1 },
+  ctBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8 },
+  ctBadgeText: { color: '#fff', fontSize: 8, fontWeight: '700' },
 });

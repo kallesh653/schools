@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, RefreshControl, Alert, ActivityIndicator,
+  StatusBar, RefreshControl, Alert, ActivityIndicator, TextInput,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { teacherAPI, sectionAPI, studentAPI, attendanceAPI } from '../services/api';
 
 const STATUS_CONFIG = {
@@ -15,16 +16,24 @@ const STATUS_CONFIG = {
 };
 const STATUS_ORDER = ['PRESENT', 'ABSENT', 'LATE', 'LEAVE'];
 
-function getGrade(status) {
-  return STATUS_CONFIG[status] || STATUS_CONFIG.PRESENT;
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  } catch { return dateStr; }
 }
+function isValidDate(str) { return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(Date.parse(str)); }
 
 export default function AttendanceScreen() {
   const [assignments, setAssignments] = useState([]);
+  const [classTeacherClasses, setClassTeacherClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [sections, setSections] = useState([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayStr());
+  const [dateInput, setDateInput] = useState(todayStr());
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -38,8 +47,12 @@ export default function AttendanceScreen() {
 
   const loadAssignments = async () => {
     try {
-      const res = await teacherAPI.getMyAssignments();
-      setAssignments(res.data || []);
+      const [aRes, ctRes] = await Promise.all([
+        teacherAPI.getMyAssignments(),
+        teacherAPI.getMyClassTeacherInfo().catch(() => ({ data: [] })),
+      ]);
+      setAssignments(aRes.data || []);
+      setClassTeacherClasses(ctRes.data || []);
     } catch (e) { console.error(e); }
   };
 
@@ -53,6 +66,7 @@ export default function AttendanceScreen() {
   };
 
   const loadStudents = async () => {
+    if (!isValidDate(date)) return;
     setLoadingStudents(true); setSubmitted(false);
     try {
       const [studRes, attRes] = await Promise.all([
@@ -69,6 +83,15 @@ export default function AttendanceScreen() {
       if (Object.keys(existingAtt).length > 0) setSubmitted(true);
     } catch (e) { Alert.alert('Error', 'Failed to load students'); }
     setLoadingStudents(false);
+  };
+
+  const applyDate = () => {
+    if (!isValidDate(dateInput)) {
+      Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
+      return;
+    }
+    setDate(dateInput);
+    setStudents([]);
   };
 
   const cycleStatus = (studentId) => {
@@ -88,6 +111,7 @@ export default function AttendanceScreen() {
 
   const submitAttendance = async () => {
     if (!selectedClassId || !selectedSectionId) return;
+    if (!isValidDate(date)) { Alert.alert('Error', 'Invalid date'); return; }
     setSubmitting(true);
     try {
       const payload = students.map(s => ({
@@ -108,6 +132,8 @@ export default function AttendanceScreen() {
   const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
   Object.values(attendance).forEach(s => { if (counts[s] !== undefined) counts[s]++; });
 
+  const isClassTeacher = (classId) => classTeacherClasses.some(c => c.classId?.toString() === classId?.toString());
+
   return (
     <View style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
       <StatusBar barStyle="light-content" backgroundColor="#2e7d32" />
@@ -118,20 +144,19 @@ export default function AttendanceScreen() {
           <View style={styles.headerIcon}>
             <MaterialCommunityIcons name="check-circle-outline" size={24} color="#fff" />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Take Attendance</Text>
             <Text style={styles.headerSub}>Mark your students</Text>
           </View>
         </View>
-        <Text style={styles.headerDate}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</Text>
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadStudents().finally(() => setRefreshing(false)); }} colors={['#2e7d32']} />}>
 
-        {/* Class/Section Selection */}
+        {/* Class/Section/Date Selection */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Select Class & Section</Text>
+          <Text style={styles.cardTitle}>Select Class, Section & Date</Text>
           {assignments.length === 0 ? (
             <View style={styles.noAssignBox}>
               <MaterialCommunityIcons name="alert-circle-outline" size={28} color="#ffb300" />
@@ -141,9 +166,15 @@ export default function AttendanceScreen() {
             <>
               <Text style={styles.pickerLabel}>Class</Text>
               <View style={styles.pickerBox}>
-                <Picker selectedValue={selectedClassId} onValueChange={v => { setSelectedClassId(v); setSelectedSectionId(''); setStudents([]); }} style={styles.picker}>
+                <Picker selectedValue={selectedClassId}
+                  onValueChange={v => { setSelectedClassId(v); setSelectedSectionId(''); setStudents([]); }}
+                  style={styles.picker}>
                   <Picker.Item label="Select your class" value="" />
-                  {uniqueClasses.map(cls => <Picker.Item key={cls.id} label={"Class " + cls.name} value={cls.id.toString()} />)}
+                  {uniqueClasses.map(cls => (
+                    <Picker.Item key={cls.id}
+                      label={"Class " + cls.name + (isClassTeacher(cls.id) ? " ★ (Class Teacher)" : "")}
+                      value={cls.id.toString()} />
+                  ))}
                 </Picker>
               </View>
 
@@ -159,14 +190,42 @@ export default function AttendanceScreen() {
                 </>
               ) : null}
 
-              <Text style={styles.pickerLabel}>Date</Text>
-              <TouchableOpacity style={styles.dateBox}>
-                <MaterialCommunityIcons name="calendar" size={18} color="#666" />
-                <Text style={styles.dateText}>{date}</Text>
-              </TouchableOpacity>
+              {/* Date Input */}
+              <Text style={styles.pickerLabel}>Date (YYYY-MM-DD)</Text>
+              <View style={styles.dateRow}>
+                <View style={styles.dateInputBox}>
+                  <MaterialCommunityIcons name="calendar" size={18} color="#666" />
+                  <TextInput
+                    style={styles.dateInput}
+                    value={dateInput}
+                    onChangeText={setDateInput}
+                    placeholder="2026-03-15"
+                    placeholderTextColor="#bbb"
+                    maxLength={10}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <TouchableOpacity style={styles.applyDateBtn} onPress={applyDate}>
+                  <Text style={styles.applyDateBtnText}>Apply</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.todayBtn} onPress={() => { setDateInput(todayStr()); setDate(todayStr()); }}>
+                  <Text style={styles.todayBtnText}>Today</Text>
+                </TouchableOpacity>
+              </View>
+              {date && (
+                <Text style={styles.dateDisplay}>{formatDisplayDate(date)}</Text>
+              )}
             </>
           )}
         </View>
+
+        {/* Class Teacher Banner */}
+        {selectedClassId && isClassTeacher(selectedClassId) && (
+          <View style={styles.classTeacherBanner}>
+            <MaterialCommunityIcons name="star-circle" size={18} color="#fff" />
+            <Text style={styles.classTeacherText}>You are the Class Teacher for this class</Text>
+          </View>
+        )}
 
         {/* Student List */}
         {loadingStudents ? (
@@ -203,13 +262,13 @@ export default function AttendanceScreen() {
             {submitted && (
               <View style={styles.submittedBanner}>
                 <MaterialCommunityIcons name="check-circle" size={16} color="#2e7d32" />
-                <Text style={styles.submittedText}>Attendance already submitted today. You can update it.</Text>
+                <Text style={styles.submittedText}>Attendance already submitted. You can update it.</Text>
               </View>
             )}
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Students ({students.length})</Text>
-              <Text style={styles.cardSub}>Tap a student to cycle through status (P → A → L → LE)</Text>
+              <Text style={styles.cardTitle}>Students ({students.length}) - {date}</Text>
+              <Text style={styles.cardSub}>Tap a student to cycle: PRESENT → ABSENT → LATE → LEAVE</Text>
               {students.map((student, idx) => {
                 const status = attendance[student.id] || 'PRESENT';
                 const cfg = STATUS_CONFIG[status];
@@ -246,7 +305,7 @@ export default function AttendanceScreen() {
         ) : selectedClassId && selectedSectionId ? (
           <View style={styles.emptyCard}>
             <MaterialCommunityIcons name="account-multiple-remove" size={40} color="#bbb" />
-            <Text style={styles.emptyText}>No students found in this class</Text>
+            <Text style={styles.emptyText}>No students found in this class/section</Text>
           </View>
         ) : null}
 
@@ -258,11 +317,10 @@ export default function AttendanceScreen() {
 
 const styles = StyleSheet.create({
   header: { backgroundColor: '#2e7d32', paddingTop: 44, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
   headerSub: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
-  headerDate: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginLeft: 56 },
   card: { backgroundColor: '#fff', borderRadius: 16, margin: 12, padding: 16, elevation: 2 },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#1a237e', marginBottom: 4 },
   cardSub: { fontSize: 11, color: '#888', marginBottom: 12 },
@@ -271,8 +329,16 @@ const styles = StyleSheet.create({
   pickerLabel: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 10, marginBottom: 4 },
   pickerBox: { borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10, backgroundColor: '#fafafa', marginBottom: 4 },
   picker: { height: 48 },
-  dateBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10, backgroundColor: '#fafafa', padding: 12, gap: 8, marginTop: 4 },
-  dateText: { fontSize: 14, color: '#444' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  dateInputBox: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10, backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
+  dateInput: { flex: 1, fontSize: 14, color: '#333' },
+  applyDateBtn: { backgroundColor: '#2e7d32', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
+  applyDateBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  todayBtn: { backgroundColor: '#e8f5e9', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
+  todayBtnText: { color: '#2e7d32', fontSize: 12, fontWeight: '700' },
+  dateDisplay: { fontSize: 11, color: '#666', marginTop: 2, fontStyle: 'italic' },
+  classTeacherBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 12, marginTop: 0, marginBottom: 8, backgroundColor: '#f9a825', padding: 10, borderRadius: 10 },
+  classTeacherText: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
   loadingBox: { padding: 40, alignItems: 'center' },
   summaryRow: { flexDirection: 'row', marginHorizontal: 12, gap: 8, marginTop: 4 },
   summaryCard: { flex: 1, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1.5 },

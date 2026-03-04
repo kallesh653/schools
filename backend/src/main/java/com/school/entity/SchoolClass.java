@@ -28,4 +28,9 @@ public class SchoolClass extends BaseEntity {
 
     @Column(length = 500)
     private String description;
+
+    /** The designated Class Teacher for this class */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_teacher_id")
+    private Teacher classTeacher;
 }

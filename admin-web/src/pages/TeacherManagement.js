@@ -4,14 +4,14 @@ import {
   TableHead, TableRow, Paper, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Grid, MenuItem, Select, FormControl, InputLabel,
   Chip, Card, CardContent, InputAdornment, Alert, Snackbar, Avatar,
-  TablePagination, Tooltip, Divider, Tabs, Tab, CircularProgress,
+  TablePagination, Tooltip, Divider, Tabs, Tab, CircularProgress, List, ListItem, ListItemAvatar, ListItemText,
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Search as SearchIcon, Person as PersonIcon, Visibility as ViewIcon,
   Close as CloseIcon, Work as WorkIcon, Email as EmailIcon, Phone as PhoneIcon,
   FileDownload as DownloadIcon, Assignment as AssignIcon, Class as ClassIcon,
-  MenuBook as SubjectIcon, School as SchoolIcon,
+  MenuBook as SubjectIcon, School as SchoolIcon, Star as StarIcon, PersonOff as PersonOffIcon,
 } from '@mui/icons-material';
 import { teacherAPI, academicAPI } from '../services/api';
 import * as XLSX from 'xlsx';
@@ -60,6 +60,13 @@ export default function TeacherManagement() {
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignSearch, setAssignSearch] = useState('');
 
+  // --- Class Teacher tab state ---
+  const [ctClassId, setCtClassId] = useState('');
+  const [ctTeacherId, setCtTeacherId] = useState('');
+  const [ctCurrentTeacher, setCtCurrentTeacher] = useState(null);
+  const [ctLoading, setCtLoading] = useState(false);
+  const [ctAssignments, setCtAssignments] = useState({}); // classId -> teacher info
+
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -88,7 +95,11 @@ export default function TeacherManagement() {
         teacherAPI.getAssignments(),
       ]);
       if (tRes.status === 'fulfilled') setTeachers(tRes.value.data || []);
-      if (cRes.status === 'fulfilled') setClasses(cRes.value.data || []);
+      if (cRes.status === 'fulfilled') {
+        setClasses(cRes.value.data || []);
+        // Load class teachers for all classes
+        loadAllClassTeachers(cRes.value.data || []);
+      }
       if (sRes.status === 'fulfilled') setSubjects(sRes.value.data || []);
       if (yRes.status === 'fulfilled') setYears(yRes.value.data || []);
       if (aRes.status === 'fulfilled') setAssignments(aRes.value.data || []);
@@ -97,6 +108,18 @@ export default function TeacherManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAllClassTeachers = async (classList) => {
+    const results = {};
+    await Promise.allSettled(
+      classList.map(cls =>
+        teacherAPI.getClassTeacher(cls.id)
+          .then(res => { if (res.data) results[cls.id] = res.data; })
+          .catch(() => {})
+      )
+    );
+    setCtAssignments(results);
   };
 
   const loadAssignments = async () => {
@@ -261,6 +284,8 @@ export default function TeacherManagement() {
           <Tab icon={<PersonIcon />} iconPosition="start" label="All Teachers"
             sx={{ textTransform: 'none', fontWeight: 600, minHeight: 56 }} />
           <Tab icon={<AssignIcon />} iconPosition="start" label="Subject Assignments"
+            sx={{ textTransform: 'none', fontWeight: 600, minHeight: 56 }} />
+          <Tab icon={<StarIcon />} iconPosition="start" label="Class Teacher"
             sx={{ textTransform: 'none', fontWeight: 600, minHeight: 56 }} />
         </Tabs>
       </Paper>
@@ -569,6 +594,165 @@ export default function TeacherManagement() {
             </Table>
           </TableContainer>
         </Paper>
+      </TabPanel>
+
+      {/* ===== TAB 2: Class Teacher ===== */}
+      <TabPanel value={tabValue} index={2}>
+        <Grid container spacing={3}>
+          {/* Assign Class Teacher Form */}
+          <Grid item xs={12} md={5}>
+            <Paper sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+              <Box display="flex" alignItems="center" gap={1.5} mb={2}>
+                <Avatar sx={{ bgcolor: '#f9a825', width: 40, height: 40 }}>
+                  <StarIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" fontWeight={700}>Assign Class Teacher</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Designate a teacher as class teacher for a class
+                  </Typography>
+                </Box>
+              </Box>
+              <Divider sx={{ mb: 3 }} />
+
+              <FormControl fullWidth sx={{ mb: 2.5 }}>
+                <InputLabel>Select Class *</InputLabel>
+                <Select value={ctClassId} label="Select Class *" onChange={e => {
+                  setCtClassId(e.target.value);
+                  setCtCurrentTeacher(ctAssignments[e.target.value] || null);
+                  setCtTeacherId('');
+                }}>
+                  {classes.map(c => (
+                    <MenuItem key={c.id} value={c.id}>
+                      <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                        <span>{c.name}</span>
+                        {ctAssignments[c.id] && (
+                          <Chip label={ctAssignments[c.id].firstName + ' ' + ctAssignments[c.id].lastName}
+                            size="small" color="warning" icon={<StarIcon />} sx={{ ml: 1, fontSize: 10 }} />
+                        )}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {ctClassId && ctCurrentTeacher && (
+                <Alert severity="info" icon={<StarIcon />} sx={{ mb: 2, borderRadius: 2 }}
+                  action={
+                    <Button color="error" size="small" onClick={async () => {
+                      if (!window.confirm('Remove class teacher?')) return;
+                      await teacherAPI.removeClassTeacher(ctClassId).catch(() => {});
+                      setCtCurrentTeacher(null);
+                      setCtAssignments(prev => { const n = {...prev}; delete n[ctClassId]; return n; });
+                      showSnackbar('Class teacher removed', 'success');
+                    }}>Remove</Button>
+                  }>
+                  Current: <strong>{ctCurrentTeacher.firstName} {ctCurrentTeacher.lastName}</strong>
+                </Alert>
+              )}
+
+              <FormControl fullWidth sx={{ mb: 2.5 }}>
+                <InputLabel>Select Teacher *</InputLabel>
+                <Select value={ctTeacherId} label="Select Teacher *"
+                  onChange={e => setCtTeacherId(e.target.value)}>
+                  {teachers.filter(t => t.active !== false).map((t, idx) => (
+                    <MenuItem key={t.id} value={t.id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Avatar sx={{ width: 24, height: 24, fontSize: 10,
+                          bgcolor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>
+                          {t.firstName?.[0]}{t.lastName?.[0]}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2">{t.firstName} {t.lastName}</Typography>
+                          <Typography variant="caption" color="text.secondary">{t.designation || 'Teacher'}</Typography>
+                        </Box>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button fullWidth variant="contained" size="large"
+                startIcon={ctLoading ? <CircularProgress size={16} color="inherit" /> : <StarIcon />}
+                onClick={async () => {
+                  if (!ctClassId || !ctTeacherId) { showSnackbar('Please select class and teacher', 'warning'); return; }
+                  setCtLoading(true);
+                  try {
+                    const res = await teacherAPI.setClassTeacher(ctTeacherId, ctClassId);
+                    const teacher = teachers.find(t => t.id === ctTeacherId);
+                    if (teacher) {
+                      setCtCurrentTeacher({ ...teacher });
+                      setCtAssignments(prev => ({ ...prev, [ctClassId]: { ...teacher } }));
+                    }
+                    showSnackbar(res.data?.message || 'Class teacher assigned!', 'success');
+                  } catch (e) {
+                    showSnackbar('Failed to assign class teacher', 'error');
+                  }
+                  setCtLoading(false);
+                }}
+                disabled={ctLoading}
+                sx={{ borderRadius: 2, py: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 15,
+                  background: 'linear-gradient(135deg, #f9a825 0%, #f57f17 100%)',
+                  '&:hover': { background: 'linear-gradient(135deg, #f57f17 0%, #e65100 100%)' } }}>
+                {ctLoading ? 'Assigning...' : 'Assign as Class Teacher'}
+              </Button>
+            </Paper>
+          </Grid>
+
+          {/* Class Teacher Overview */}
+          <Grid item xs={12} md={7}>
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Box display="flex" alignItems="center" gap={1.5} mb={2}>
+                <Avatar sx={{ bgcolor: '#1565c0', width: 40, height: 40 }}>
+                  <ClassIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" fontWeight={700}>Class Teacher Overview</Typography>
+                  <Typography variant="caption" color="text.secondary">All classes with assigned class teachers</Typography>
+                </Box>
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              <List disablePadding>
+                {classes.map((cls, idx) => {
+                  const ct = ctAssignments[cls.id];
+                  return (
+                    <ListItem key={cls.id} divider={idx < classes.length - 1}
+                      sx={{ borderRadius: 1, '&:hover': { bgcolor: '#f5f5f5' }, py: 1.5 }}>
+                      <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: AVATAR_COLORS[idx % AVATAR_COLORS.length], width: 40, height: 40, fontSize: 13, fontWeight: 700 }}>
+                          {cls.name?.substring(0, 2)}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={<Typography fontWeight={600}>{cls.name}</Typography>}
+                        secondary={ct
+                          ? <Box display="flex" alignItems="center" gap={0.5}>
+                              <StarIcon sx={{ fontSize: 13, color: '#f9a825' }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {ct.firstName} {ct.lastName} · {ct.designation || 'Teacher'}
+                              </Typography>
+                            </Box>
+                          : <Typography variant="caption" color="text.disabled">No class teacher assigned</Typography>
+                        }
+                      />
+                      {ct ? (
+                        <Chip label="Assigned" color="warning" size="small" icon={<StarIcon />} />
+                      ) : (
+                        <Chip label="Unassigned" size="small" variant="outlined" color="default" />
+                      )}
+                    </ListItem>
+                  );
+                })}
+                {classes.length === 0 && (
+                  <Box textAlign="center" py={4} color="text.disabled">
+                    <ClassIcon sx={{ fontSize: 48, mb: 1 }} />
+                    <Typography>No classes found</Typography>
+                  </Box>
+                )}
+              </List>
+            </Paper>
+          </Grid>
+        </Grid>
       </TabPanel>
 
       {/* ===== Add/Edit Teacher Dialog ===== */}

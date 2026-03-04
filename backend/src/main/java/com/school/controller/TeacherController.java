@@ -330,6 +330,100 @@ public class TeacherController {
         return ResponseEntity.ok(new MessageResponse("Assignment removed successfully"));
     }
 
+    /**
+     * Admin: Set class teacher for a class
+     * PUT /teachers/{teacherId}/class-teacher/{classId}
+     */
+    @PutMapping("/{teacherId}/class-teacher/{classId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<?> setClassTeacher(@PathVariable Long teacherId, @PathVariable Long classId) {
+        try {
+            Teacher teacher = teacherRepository.findById(teacherId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
+            SchoolClass schoolClass = classRepository.findById(classId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Class", "id", classId));
+            schoolClass.setClassTeacher(teacher);
+            classRepository.save(schoolClass);
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("message", "Class teacher assigned successfully");
+            res.put("classId", classId);
+            res.put("teacherId", teacherId);
+            res.put("teacherName", teacher.getFirstName() + " " + teacher.getLastName());
+            return ResponseEntity.ok(res);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin: Remove class teacher from a class
+     * DELETE /teachers/class-teacher/{classId}
+     */
+    @DeleteMapping("/class-teacher/{classId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<?> removeClassTeacher(@PathVariable Long classId) {
+        SchoolClass schoolClass = classRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Class", "id", classId));
+        schoolClass.setClassTeacher(null);
+        classRepository.save(schoolClass);
+        return ResponseEntity.ok(new MessageResponse("Class teacher removed successfully"));
+    }
+
+    /**
+     * Get class teacher for a class (accessible to all roles)
+     * GET /teachers/class-teacher/{classId}
+     */
+    @GetMapping("/class-teacher/{classId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'PARENT')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getClassTeacher(@PathVariable Long classId) {
+        SchoolClass schoolClass = classRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Class", "id", classId));
+        Teacher t = schoolClass.getClassTeacher();
+        if (t == null) return ResponseEntity.ok(null);
+        Map<String, Object> tm = new LinkedHashMap<>();
+        tm.put("id", t.getId());
+        tm.put("employeeId", t.getEmployeeId());
+        tm.put("firstName", t.getFirstName());
+        tm.put("lastName", t.getLastName());
+        tm.put("designation", t.getDesignation());
+        tm.put("email", t.getEmail());
+        tm.put("phone", t.getPhone());
+        tm.put("specialization", t.getSpecialization());
+        tm.put("qualification", t.getQualification());
+        tm.put("classId", classId);
+        return ResponseEntity.ok(tm);
+    }
+
+    /**
+     * Teacher: check if I am the class teacher of any class
+     * GET /teachers/my-class-teacher-info
+     */
+    @GetMapping("/my-class-teacher-info")
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getMyClassTeacherInfo() {
+        String username = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null || user.getEntityId() == null) return ResponseEntity.ok(new ArrayList<>());
+        Teacher teacher = teacherRepository.findById(user.getEntityId()).orElse(null);
+        if (teacher == null) return ResponseEntity.ok(new ArrayList<>());
+
+        List<SchoolClass> classes = classRepository.findByClassTeacher(teacher);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (SchoolClass sc : classes) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("classId", sc.getId());
+            m.put("className", sc.getName());
+            m.put("classCode", sc.getCode());
+            result.add(m);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     private String generateEmployeeId() {
         return "EMP" + System.currentTimeMillis() + new Random().nextInt(1000);
     }

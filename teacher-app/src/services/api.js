@@ -22,6 +22,10 @@ export const authAPI = {
 export const teacherAPI = {
   getById: (id) => api.get(`/teachers/${id}`),
   getMyAssignments: () => api.get('/teachers/my-assignments'),
+  getMyClassTeacherInfo: () => api.get('/teachers/my-class-teacher-info'),
+  setClassTeacher: (teacherId, classId) => api.put(`/teachers/${teacherId}/class-teacher/${classId}`),
+  removeClassTeacher: (classId) => api.delete(`/teachers/class-teacher/${classId}`),
+  getClassTeacher: (classId) => api.get(`/teachers/class-teacher/${classId}`),
 };
 
 export const classAPI = {
