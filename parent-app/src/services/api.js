@@ -61,6 +61,7 @@ export const noticeAPI = {
 
 export const teacherAPI = {
   getByClass: (classId) => api.get(`/teachers/class/${classId}`),
+  getClassTeacher: (classId) => api.get(`/teachers/class-teacher/${classId}`),
 };
 
 export default api;

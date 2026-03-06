@@ -10,7 +10,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parentAPI, teacherAPI } from '../services/api';
 import ScreenHeader from '../components/ScreenHeader';
 
-// ─── Color palettes ───────────────────────────────────────────────────────────
 const SUBJECT_COLORS = [
   { bg: '#e3f2fd', border: '#1976d2', text: '#1565c0' },
   { bg: '#f3e5f5', border: '#7b1fa2', text: '#6a1b9a' },
@@ -21,14 +20,9 @@ const SUBJECT_COLORS = [
   { bg: '#fff8e1', border: '#f9a825', text: '#f57f17' },
   { bg: '#e8eaf6', border: '#3949ab', text: '#283593' },
 ];
-
-const AVATAR_COLORS = [
-  '#1a237e', '#4a148c', '#b71c1c', '#1b5e20', '#e65100', '#006064',
-];
-
+const AVATAR_COLORS = ['#1a237e', '#4a148c', '#b71c1c', '#1b5e20', '#e65100', '#006064'];
 const CARD_ACCENTS = ['#1a237e', '#4a148c', '#c62828', '#2e7d32', '#e65100', '#00838f'];
 
-// ─── SubjectChip ──────────────────────────────────────────────────────────────
 function SubjectChip({ name, code, colorSet }) {
   return (
     <View style={[styles.subjectChip, { backgroundColor: colorSet.bg, borderColor: colorSet.border }]}>
@@ -42,7 +36,6 @@ function SubjectChip({ name, code, colorSet }) {
   );
 }
 
-// ─── SkeletonCard ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
   const fadeAnim = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
@@ -58,7 +51,7 @@ function SkeletonCard() {
       <View style={[styles.cardAccentBar, { backgroundColor: '#e0e0e0' }]} />
       <View style={styles.cardBody}>
         <View style={styles.cardHeader}>
-          <View style={[styles.skeletonAvatar]} />
+          <View style={styles.skeletonAvatar} />
           <View style={styles.teacherMeta}>
             <View style={styles.skeletonLine} />
             <View style={[styles.skeletonLine, { width: '60%', marginTop: 8 }]} />
@@ -76,8 +69,82 @@ function SkeletonCard() {
   );
 }
 
-// ─── TeacherCard ──────────────────────────────────────────────────────────────
-function TeacherCard({ teacher, index, anim }) {
+// ── Class Teacher Card ────────────────────────────────────────────────────────
+function ClassTeacherCard({ teacher }) {
+  const initials = `${(teacher.firstName || '?')[0]}${(teacher.lastName || '?')[0]}`.toUpperCase();
+  return (
+    <View style={styles.ctCard}>
+      {/* Gold header strip */}
+      <View style={styles.ctHeader}>
+        <MaterialCommunityIcons name="star-circle" size={18} color="#fff" />
+        <Text style={styles.ctHeaderLabel}>CLASS TEACHER</Text>
+        <View style={styles.ctHeaderSpacer} />
+        <View style={styles.ctHeaderBadge}>
+          <MaterialCommunityIcons name="shield-star" size={13} color="#FFB300" />
+          <Text style={styles.ctHeaderBadgeText}>ASSIGNED BY ADMIN</Text>
+        </View>
+      </View>
+
+      {/* Body */}
+      <View style={styles.ctBody}>
+        <View style={styles.ctAvatarWrap}>
+          <View style={styles.ctAvatar}>
+            <Text style={styles.ctAvatarText}>{initials}</Text>
+          </View>
+          <View style={styles.ctStarBadge}>
+            <MaterialCommunityIcons name="star" size={12} color="#fff" />
+          </View>
+        </View>
+        <View style={styles.ctInfo}>
+          <Text style={styles.ctName}>{teacher.firstName} {teacher.lastName}</Text>
+          {teacher.employeeId ? (
+            <View style={styles.ctEmpRow}>
+              <MaterialCommunityIcons name="badge-account-horizontal-outline" size={11} color="#999" />
+              <Text style={styles.ctEmpId}>{teacher.employeeId}</Text>
+            </View>
+          ) : null}
+          {teacher.designation ? (
+            <View style={styles.ctDesignRow}>
+              <MaterialCommunityIcons name="briefcase-outline" size={12} color="#2e7d32" />
+              <Text style={styles.ctDesignation}>{teacher.designation}</Text>
+            </View>
+          ) : null}
+          {teacher.specialization ? (
+            <View style={styles.ctSpecRow}>
+              <MaterialCommunityIcons name="star-circle-outline" size={12} color="#7b1fa2" />
+              <Text style={styles.ctSpecText}>{teacher.specialization}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Contact row */}
+      {(teacher.phone || teacher.email) ? (
+        <View style={styles.ctContactWrap}>
+          {teacher.phone ? (
+            <View style={styles.ctContactItem}>
+              <View style={[styles.ctContactIcon, { backgroundColor: '#e8f5e9' }]}>
+                <MaterialCommunityIcons name="phone-outline" size={13} color="#2e7d32" />
+              </View>
+              <Text style={styles.ctContactText} numberOfLines={1}>{teacher.phone}</Text>
+            </View>
+          ) : null}
+          {teacher.email ? (
+            <View style={styles.ctContactItem}>
+              <View style={[styles.ctContactIcon, { backgroundColor: '#e3f2fd' }]}>
+                <MaterialCommunityIcons name="email-outline" size={13} color="#1565c0" />
+              </View>
+              <Text style={styles.ctContactText} numberOfLines={1}>{teacher.email}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ── Teacher Card ──────────────────────────────────────────────────────────────
+function TeacherCard({ teacher, index, anim, isClassTeacher }) {
   const initials = `${(teacher.firstName || '?')[0]}${(teacher.lastName || '?')[0]}`.toUpperCase();
   const avatarColor = AVATAR_COLORS[index % AVATAR_COLORS.length];
   const accentColor = CARD_ACCENTS[index % CARD_ACCENTS.length];
@@ -87,12 +154,20 @@ function TeacherCard({ teacher, index, anim }) {
       opacity: anim,
       transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
     }]}>
-      <View style={[styles.cardAccentBar, { backgroundColor: accentColor }]} />
+      <View style={[styles.cardAccentBar, { backgroundColor: isClassTeacher ? '#f9a825' : accentColor }]} />
       <View style={styles.cardBody}>
+
+        {/* CT badge top-right */}
+        {isClassTeacher ? (
+          <View style={styles.ctCornerBadge}>
+            <MaterialCommunityIcons name="star-circle" size={12} color="#f9a825" />
+            <Text style={styles.ctCornerText}>Class Teacher</Text>
+          </View>
+        ) : null}
 
         {/* Header */}
         <View style={styles.cardHeader}>
-          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+          <View style={[styles.avatar, { backgroundColor: isClassTeacher ? '#e65100' : avatarColor }]}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={styles.teacherMeta}>
@@ -104,9 +179,9 @@ function TeacherCard({ teacher, index, anim }) {
               </View>
             ) : null}
             {teacher.designation ? (
-              <View style={[styles.designationBadge, { borderColor: accentColor + '55' }]}>
-                <MaterialCommunityIcons name="briefcase-outline" size={11} color={accentColor} />
-                <Text style={[styles.designationText, { color: accentColor }]}>{teacher.designation}</Text>
+              <View style={[styles.designationBadge, { borderColor: (isClassTeacher ? '#f9a825' : accentColor) + '55' }]}>
+                <MaterialCommunityIcons name="briefcase-outline" size={11} color={isClassTeacher ? '#f57f17' : accentColor} />
+                <Text style={[styles.designationText, { color: isClassTeacher ? '#f57f17' : accentColor }]}>{teacher.designation}</Text>
               </View>
             ) : null}
             {teacher.specialization ? (
@@ -178,7 +253,7 @@ function TeacherCard({ teacher, index, anim }) {
           </>
         ) : null}
 
-        {/* Footer: experience + joining date */}
+        {/* Footer */}
         {(teacher.experience || teacher.joiningDate) ? (
           <View style={styles.cardFooter}>
             {teacher.experience ? (
@@ -200,11 +275,12 @@ function TeacherCard({ teacher, index, anim }) {
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function TeachersScreen({ navigation }) {
   const [children, setChildren] = useState([]);
   const [selectedChild, setSelectedChild] = useState('');
   const [teachers, setTeachers] = useState([]);
+  const [classTeacher, setClassTeacher] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -212,12 +288,14 @@ export default function TeachersScreen({ navigation }) {
 
   const cardAnims = useRef([]).current;
   const bannerAnim = useRef(new Animated.Value(0)).current;
+  const ctAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { fetchChildren(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectedChild) {
       setTeachers([]);
+      setClassTeacher(null);
       setError(null);
       setSearchQuery('');
       fetchTeachers();
@@ -246,12 +324,17 @@ export default function TeachersScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      const res = await teacherAPI.getByClass(child.schoolClass.id);
+      const classId = child.schoolClass.id;
+      const [res, ctRes] = await Promise.all([
+        teacherAPI.getByClass(classId),
+        teacherAPI.getClassTeacher(classId).catch(() => ({ data: null })),
+      ]);
       const list = res.data || [];
       setTeachers(list);
+      setClassTeacher(ctRes.data || null);
       setError(null);
 
-      // Animate cards in staggered
+      // Animate cards staggered
       const anims = list.map(() => new Animated.Value(0));
       cardAnims.length = 0;
       anims.forEach(a => cardAnims.push(a));
@@ -259,13 +342,17 @@ export default function TeachersScreen({ navigation }) {
         Animated.spring(a, { toValue: 1, tension: 65, friction: 8, useNativeDriver: true })
       )).start();
 
-      // Banner animation
+      // CT card animation
+      ctAnim.setValue(0);
+      Animated.spring(ctAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }).start();
+
       bannerAnim.setValue(0);
       Animated.spring(bannerAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }).start();
     } catch (e) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load teacher information';
       setError(msg);
       setTeachers([]);
+      setClassTeacher(null);
     } finally {
       setLoading(false);
     }
@@ -327,6 +414,7 @@ export default function TeachersScreen({ navigation }) {
                   <Text style={styles.classBannerTitle}>Class {className}</Text>
                   <Text style={styles.classBannerSub}>
                     {teachers.length} Teacher{teachers.length !== 1 ? 's' : ''} assigned
+                    {classTeacher ? ' · CT Assigned' : ''}
                   </Text>
                 </View>
               </View>
@@ -335,6 +423,16 @@ export default function TeachersScreen({ navigation }) {
                 <Text style={styles.teacherBadgeLabel}>TEACHERS</Text>
               </View>
             </View>
+          </Animated.View>
+        ) : null}
+
+        {/* Class Teacher Card */}
+        {!loading && classTeacher ? (
+          <Animated.View style={{
+            opacity: ctAnim,
+            transform: [{ scale: ctAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+          }}>
+            <ClassTeacherCard teacher={classTeacher} />
           </Animated.View>
         ) : null}
 
@@ -383,13 +481,24 @@ export default function TeachersScreen({ navigation }) {
           </View>
         ) : null}
 
-        {/* Teachers list */}
+        {/* Subject Teachers list */}
+        {!loading && !error && teachers.length > 0 ? (
+          <View style={{ marginHorizontal: 12, marginBottom: 4, marginTop: classTeacher ? 4 : 0 }}>
+            <View style={styles.sectionDividerRow}>
+              <View style={styles.sectionDividerLine} />
+              <Text style={styles.sectionDividerText}>SUBJECT TEACHERS</Text>
+              <View style={styles.sectionDividerLine} />
+            </View>
+          </View>
+        ) : null}
+
         {!loading && !error && filteredTeachers.map((teacher, idx) => (
           <TeacherCard
             key={teacher.id || idx}
             teacher={teacher}
             index={idx}
             anim={cardAnims[teachers.indexOf(teacher)] ?? new Animated.Value(1)}
+            isClassTeacher={classTeacher?.id === teacher.id}
           />
         ))}
 
@@ -408,7 +517,7 @@ export default function TeachersScreen({ navigation }) {
         ) : null}
 
         {/* Empty state */}
-        {!loading && !error && teachers.length === 0 && selectedChild ? (
+        {!loading && !error && teachers.length === 0 && !classTeacher && selectedChild ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconBox}>
               <MaterialCommunityIcons name="account-group-outline" size={48} color="#90caf9" />
@@ -427,14 +536,12 @@ export default function TeachersScreen({ navigation }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f4f8' },
 
   pickerCard: {
     margin: 12, marginTop: 12, backgroundColor: '#fff',
     borderRadius: 16, padding: 14, elevation: 2,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4,
   },
   pickerLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   pickerLabel: { fontSize: 13, fontWeight: '700', color: '#333' },
@@ -447,27 +554,61 @@ const styles = StyleSheet.create({
   },
   classBannerGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, backgroundColor: '#1a237e' },
   classBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  classIconBox: {
-    width: 52, height: 52, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
-  },
+  classIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   classBannerTitle: { color: '#fff', fontSize: 19, fontWeight: '800' },
   classBannerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
-  teacherBadge: {
-    backgroundColor: '#FFB300', width: 64, height: 64, borderRadius: 32,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  teacherBadge: { backgroundColor: '#FFB300', width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   teacherBadgeNum: { fontSize: 24, fontWeight: '900', color: '#1a237e' },
   teacherBadgeLabel: { fontSize: 8, fontWeight: '800', color: '#1a237e', letterSpacing: 0.5 },
 
+  // ── Class Teacher Card ──
+  ctCard: {
+    marginHorizontal: 12, marginBottom: 12, backgroundColor: '#fff',
+    borderRadius: 18, elevation: 5,
+    shadowColor: '#f9a825', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 10,
+    overflow: 'hidden', borderWidth: 1.5, borderColor: '#FFE082',
+  },
+  ctHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#f9a825', paddingHorizontal: 16, paddingVertical: 10,
+  },
+  ctHeaderLabel: { fontSize: 12, fontWeight: '900', color: '#fff', letterSpacing: 1.5 },
+  ctHeaderSpacer: { flex: 1 },
+  ctHeaderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  ctHeaderBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+
+  ctBody: { flexDirection: 'row', alignItems: 'flex-start', padding: 16, gap: 14 },
+  ctAvatarWrap: { position: 'relative' },
+  ctAvatar: { width: 72, height: 72, borderRadius: 22, backgroundColor: '#e65100', alignItems: 'center', justifyContent: 'center' },
+  ctAvatarText: { color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: 1 },
+  ctStarBadge: { position: 'absolute', bottom: -4, right: -4, width: 22, height: 22, borderRadius: 11, backgroundColor: '#f9a825', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+
+  ctInfo: { flex: 1, paddingTop: 4 },
+  ctName: { fontSize: 18, fontWeight: '800', color: '#1a237e', marginBottom: 5 },
+  ctEmpRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+  ctEmpId: { fontSize: 11, color: '#aaa', fontWeight: '600' },
+  ctDesignRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
+  ctDesignation: { fontSize: 12, color: '#2e7d32', fontWeight: '700' },
+  ctSpecRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ctSpecText: { fontSize: 12, color: '#7b1fa2', fontWeight: '600' },
+
+  ctContactWrap: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 14, gap: 12, flexWrap: 'wrap' },
+  ctContactItem: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 140 },
+  ctContactIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  ctContactText: { fontSize: 13, color: '#444', fontWeight: '600', flex: 1 },
+
+  // ── Section Divider ──
+  sectionDividerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 8 },
+  sectionDividerLine: { flex: 1, height: 1, backgroundColor: '#e0e0e0' },
+  sectionDividerText: { fontSize: 10, fontWeight: '800', color: '#999', letterSpacing: 1 },
+
   searchCard: {
     marginHorizontal: 12, marginBottom: 8, backgroundColor: '#fff', borderRadius: 14,
-    paddingHorizontal: 14, paddingVertical: 2, flexDirection: 'row', alignItems: 'center',
-    gap: 8, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.07, shadowRadius: 4,
+    paddingHorizontal: 14, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 2,
   },
   searchInput: { flex: 1, fontSize: 14, color: '#333', paddingVertical: 11 },
 
-  // Teacher Card
+  // ── Teacher Card ──
   teacherCard: {
     marginHorizontal: 12, marginBottom: 12, backgroundColor: '#fff', borderRadius: 18,
     flexDirection: 'row', elevation: 3,
@@ -478,17 +619,16 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, padding: 16 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
 
+  ctCornerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginBottom: 8, backgroundColor: '#fff8e1', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: '#FFE082' },
+  ctCornerText: { fontSize: 10, fontWeight: '700', color: '#f57f17' },
+
   avatar: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1 },
-
   teacherMeta: { flex: 1, paddingTop: 2 },
   teacherName: { fontSize: 17, fontWeight: '800', color: '#1a237e', marginBottom: 4, lineHeight: 22 },
   empIdRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 },
   empId: { fontSize: 11, color: '#aaa', fontWeight: '600' },
-  designationBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
-    borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4,
-  },
+  designationBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 },
   designationText: { fontSize: 11, fontWeight: '700' },
   specializationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   specializationText: { fontSize: 12, color: '#7b1fa2', fontWeight: '600' },
@@ -499,10 +639,7 @@ const styles = StyleSheet.create({
   sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   sectionLabelText: { fontSize: 11, fontWeight: '800', color: '#1976d2', letterSpacing: 0.8 },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  subjectChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1,
-  },
+  subjectChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
   subjectChipText: { fontSize: 12, fontWeight: '700' },
   subjectCodeBadge: { borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
   subjectCodeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
@@ -514,43 +651,25 @@ const styles = StyleSheet.create({
   contactIconBox: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   contactText: { fontSize: 13, color: '#555', flex: 1 },
 
-  cardFooter: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f5f5f5',
-  },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f5f5f5' },
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footerText: { fontSize: 11, color: '#888' },
 
-  // Skeleton
   skeletonAvatar: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#e8e8e8' },
   skeletonLine: { height: 12, backgroundColor: '#e8e8e8', borderRadius: 6, width: '80%' },
   skeletonChip: { height: 28, backgroundColor: '#e8e8e8', borderRadius: 10 },
 
-  // Error
-  errorCard: {
-    margin: 12, backgroundColor: '#fff', borderRadius: 18, padding: 32,
-    alignItems: 'center', elevation: 2,
-  },
-  errorIconBox: {
-    width: 80, height: 80, borderRadius: 40, backgroundColor: '#ffebee',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
+  errorCard: { margin: 12, backgroundColor: '#fff', borderRadius: 18, padding: 32, alignItems: 'center', elevation: 2 },
+  errorIconBox: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#ffebee', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   errorTitle: { fontSize: 16, fontWeight: '700', color: '#c62828', marginBottom: 6 },
   errorMsg: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
   retryBtn: { backgroundColor: '#1a237e', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
   retryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
-  // Empty
   emptyState: { margin: 24, alignItems: 'center', gap: 10 },
-  emptyIconBox: {
-    width: 96, height: 96, borderRadius: 48, backgroundColor: '#e3f2fd',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
-  },
+  emptyIconBox: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#e3f2fd', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: '#333' },
   emptySub: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 22 },
-  clearSearchBtn: {
-    marginTop: 6, backgroundColor: '#e3f2fd',
-    paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12,
-  },
+  clearSearchBtn: { marginTop: 6, backgroundColor: '#e3f2fd', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
   clearSearchText: { color: '#1976d2', fontSize: 13, fontWeight: '700' },
 });

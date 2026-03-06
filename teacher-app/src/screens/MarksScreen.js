@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { teacherAPI, sectionAPI, studentAPI, examinationAPI, marksAPI } from '../services/api';
+import { teacherAPI, sectionAPI, studentAPI, examinationAPI, marksAPI, subjectAPI } from '../services/api';
 
 function getGrade(pct) {
   if (pct >= 90) return { grade: 'A+', color: '#1b5e20' };
@@ -32,6 +32,8 @@ export default function MarksScreen() {
   const [maxPractical, setMaxPractical] = useState('0');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [classTeacherClasses, setClassTeacherClasses] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentStudent, setCurrentStudent] = useState(null);
   const [theoryInput, setTheoryInput] = useState('');
@@ -39,8 +41,18 @@ export default function MarksScreen() {
   const [isAbsent, setIsAbsent] = useState(false);
 
   useEffect(() => {
-    Promise.all([teacherAPI.getMyAssignments(), examinationAPI.getAll()])
-      .then(([aRes, eRes]) => { setAssignments(aRes.data || []); setExams(eRes.data || []); })
+    Promise.all([
+      teacherAPI.getMyAssignments(),
+      examinationAPI.getAll(),
+      teacherAPI.getMyClassTeacherInfo().catch(() => ({ data: [] })),
+      subjectAPI.getAll().catch(() => ({ data: [] })),
+    ])
+      .then(([aRes, eRes, ctRes, sRes]) => {
+        setAssignments(aRes.data || []);
+        setExams(eRes.data || []);
+        setClassTeacherClasses(ctRes.data || []);
+        setAllSubjects(sRes.data || []);
+      })
       .catch(() => {});
   }, []);
 
@@ -63,7 +75,17 @@ export default function MarksScreen() {
   };
 
   const uniqueClasses = [...new Map(assignments.map(a => [a.schoolClass?.id, a.schoolClass])).values()].filter(Boolean);
-  const classSubjects = assignments.filter(a => a.schoolClass?.id?.toString() === selectedClassId).map(a => a.subject).filter(Boolean);
+  // Also show CT-only classes (no subject assignment but teacher is CT)
+  const assignedCIds = new Set(uniqueClasses.map(c => c.id?.toString()));
+  const ctOnlyClasses = classTeacherClasses
+    .filter(c => !assignedCIds.has(c.classId?.toString()))
+    .map(c => ({ id: c.classId, name: c.className, code: c.classCode }));
+  const allClasses = [...uniqueClasses, ...ctOnlyClasses];
+  const isCtClass = (classId) => classTeacherClasses.some(c => c.classId?.toString() === classId?.toString());
+  // Class teachers can enter marks for ALL subjects in their class
+  const classSubjects = isCtClass(selectedClassId)
+    ? allSubjects
+    : assignments.filter(a => a.schoolClass?.id?.toString() === selectedClassId).map(a => a.subject).filter(Boolean);
 
   const openModal = (student) => {
     const existing = marksData[student.id];
@@ -138,7 +160,7 @@ export default function MarksScreen() {
           <View style={styles.pickerBox}>
             <Picker selectedValue={selectedClassId} onValueChange={v => { setSelectedClassId(v); setSelectedSectionId(''); setSelectedSubjectId(''); setStudents([]); }} style={styles.picker}>
               <Picker.Item label="Select your class" value="" />
-              {uniqueClasses.map(c => <Picker.Item key={c.id} label={"Class " + c.name} value={c.id.toString()} />)}
+              {allClasses.map(c => <Picker.Item key={c.id} label={"Class " + c.name + (isCtClass(c.id) ? " ★ CT" : "")} value={c.id.toString()} />)}
             </Picker>
           </View>
 
@@ -152,7 +174,13 @@ export default function MarksScreen() {
                 </Picker>
               </View>
 
-              <Text style={styles.pickerLabel}>Subject (assigned to you)</Text>
+              {isCtClass(selectedClassId) && (
+                <View style={styles.ctBanner}>
+                  <MaterialCommunityIcons name="star-circle" size={16} color="#fff" />
+                  <Text style={styles.ctBannerText}>Class Teacher — enter marks for any subject</Text>
+                </View>
+              )}
+              <Text style={styles.pickerLabel}>{isCtClass(selectedClassId) ? 'Subject (all subjects)' : 'Subject (assigned to you)'}</Text>
               <View style={styles.pickerBox}>
                 <Picker selectedValue={selectedSubjectId} onValueChange={setSelectedSubjectId} style={styles.picker}>
                   <Picker.Item label="Select subject" value="" />
@@ -326,6 +354,8 @@ const styles = StyleSheet.create({
   submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   emptyCard: { margin: 16, backgroundColor: '#fff', borderRadius: 14, padding: 32, alignItems: 'center', elevation: 1 },
   emptyText: { color: '#aaa', marginTop: 10, fontSize: 13 },
+  ctBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f9a825', padding: 10, borderRadius: 10, marginTop: 10, marginBottom: 2 },
+  ctBannerText: { color: '#fff', fontSize: 12, fontWeight: '700', flex: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

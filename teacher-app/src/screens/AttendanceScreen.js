@@ -129,6 +129,12 @@ export default function AttendanceScreen() {
   };
 
   const uniqueClasses = [...new Map(assignments.map(a => [a.schoolClass?.id, a.schoolClass])).values()].filter(Boolean);
+  // Also include CT-only classes (where teacher is CT but has no subject assignment)
+  const assignedCIds = new Set(uniqueClasses.map(c => c.id?.toString()));
+  const ctOnlyClasses = classTeacherClasses
+    .filter(c => !assignedCIds.has(c.classId?.toString()))
+    .map(c => ({ id: c.classId, name: c.className, code: c.classCode }));
+  const allClasses = [...uniqueClasses, ...ctOnlyClasses];
   const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
   Object.values(attendance).forEach(s => { if (counts[s] !== undefined) counts[s]++; });
 
@@ -157,7 +163,7 @@ export default function AttendanceScreen() {
         {/* Class/Section/Date Selection */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Select Class, Section & Date</Text>
-          {assignments.length === 0 ? (
+          {allClasses.length === 0 ? (
             <View style={styles.noAssignBox}>
               <MaterialCommunityIcons name="alert-circle-outline" size={28} color="#ffb300" />
               <Text style={styles.noAssignText}>No classes assigned. Contact admin.</Text>
@@ -170,7 +176,7 @@ export default function AttendanceScreen() {
                   onValueChange={v => { setSelectedClassId(v); setSelectedSectionId(''); setStudents([]); }}
                   style={styles.picker}>
                   <Picker.Item label="Select your class" value="" />
-                  {uniqueClasses.map(cls => (
+                  {allClasses.map(cls => (
                     <Picker.Item key={cls.id}
                       label={"Class " + cls.name + (isClassTeacher(cls.id) ? " ★ (Class Teacher)" : "")}
                       value={cls.id.toString()} />
