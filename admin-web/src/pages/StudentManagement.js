@@ -18,6 +18,7 @@ const initialFormState = {
   firstName: '', lastName: '', dateOfBirth: '', gender: '', bloodGroup: '',
   address: '', phone: '', email: '', rollNo: '', schoolClass: null, section: null,
   admissionDate: new Date().toISOString().split('T')[0],
+  aadharNumber: '', academicYearFees: '',
   // Parent Info
   fatherName: '', fatherPhone: '', fatherEmail: '', fatherOccupation: '',
   motherName: '', motherPhone: '', motherEmail: '', motherOccupation: '',
@@ -44,6 +45,7 @@ export default function StudentManagement() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filterClass, setFilterClass] = useState('');
+  const [ageError, setAgeError] = useState('');
 
   useEffect(() => {
     loadData();
@@ -57,6 +59,21 @@ export default function StudentManagement() {
       setSections([]);
     }
   }, [formData.schoolClass, allSections]);
+
+  const handleDobChange = (e) => {
+    const dob = e.target.value;
+    setFormData({...formData, dateOfBirth: dob});
+    if (dob) {
+      const today = new Date();
+      const birth = new Date(dob);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      setAgeError(age < 3 ? 'Student must be at least 3 years old' : '');
+    } else {
+      setAgeError('');
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -86,9 +103,9 @@ export default function StudentManagement() {
   };
 
   const handleOpenDialog = (student = null) => {
+    setAgeError('');
     if (student) {
       setIsEdit(true);
-      // Only store the fields we need in formData — avoid spreading full entity objects
       setFormData({
         ...initialFormState,
         id: student.id,
@@ -104,6 +121,8 @@ export default function StudentManagement() {
         admissionDate: student.admissionDate || '',
         schoolClass: student.schoolClass?.id || '',
         section: student.section?.id || '',
+        aadharNumber: student.aadharNumber || '',
+        academicYearFees: student.academicYearFees !== null && student.academicYearFees !== undefined ? String(student.academicYearFees) : '',
       });
     } else {
       setIsEdit(false);
@@ -116,6 +135,7 @@ export default function StudentManagement() {
     setOpenDialog(false);
     setFormData(initialFormState);
     setIsEdit(false);
+    setAgeError('');
   };
 
   const handleViewStudent = (student) => {
@@ -129,6 +149,7 @@ export default function StudentManagement() {
   };
 
   const handleSubmit = async () => {
+    if (ageError) { showSnackbar(ageError, 'error'); return; }
     try {
       if (isEdit) {
         // Build clean Student update payload — only the fields PUT endpoint accepts
@@ -147,6 +168,8 @@ export default function StudentManagement() {
           admissionDate: formData.admissionDate || null,
           schoolClass: classId ? { id: classId } : null,
           section: sectionId ? { id: sectionId } : null,
+          aadharNumber: formData.aadharNumber || null,
+          academicYearFees: formData.academicYearFees ? parseFloat(formData.academicYearFees) : null,
         };
         await studentAPI.update(formData.id, updateData);
         showSnackbar('Student updated successfully');
@@ -183,6 +206,8 @@ export default function StudentManagement() {
           motherOccupation: formData.motherOccupation || null,
           address2: formData.address2 || null,
           emergencyContact: formData.emergencyContact || null,
+          aadharNumber: formData.aadharNumber || null,
+          academicYearFees: formData.academicYearFees ? parseFloat(formData.academicYearFees) : null,
         };
         await studentAPI.create(createData);
         showSnackbar('Student added successfully! Parent login created.');
@@ -447,17 +472,18 @@ export default function StudentManagement() {
           <Grid container spacing={2}>
             <Grid item xs={12}><Typography variant="subtitle2" color="primary" fontWeight={600}>Personal Information</Typography><Divider sx={{ mt: 1 }} /></Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label="First Name" required value={formData.firstName}
+              <TextField fullWidth label="First Name" value={formData.firstName}
                 onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label="Last Name" required value={formData.lastName}
+              <TextField fullWidth label="Last Name" value={formData.lastName}
                 onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
             </Grid>
             <Grid item xs={12} md={4}>
               <TextField fullWidth label="Date of Birth" type="date" value={formData.dateOfBirth}
-                onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                InputLabelProps={{ shrink: true }} />
+                onChange={handleDobChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!ageError} helperText={ageError} />
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
@@ -479,6 +505,11 @@ export default function StudentManagement() {
                 </Select>
               </FormControl>
             </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField fullWidth label="Aadhaar Number" value={formData.aadharNumber}
+                onChange={(e) => setFormData({...formData, aadharNumber: e.target.value})}
+                inputProps={{ maxLength: 20 }} placeholder="12-digit Aadhaar No." />
+            </Grid>
             <Grid item xs={12}><Typography variant="subtitle2" color="primary" fontWeight={600} sx={{ mt: 1 }}>Contact Information</Typography><Divider sx={{ mt: 1 }} /></Grid>
             <Grid item xs={12} md={6}>
               <TextField fullWidth label="Phone" value={formData.phone}
@@ -494,9 +525,10 @@ export default function StudentManagement() {
             </Grid>
             <Grid item xs={12}><Typography variant="subtitle2" color="primary" fontWeight={600} sx={{ mt: 1 }}>Academic Information</Typography><Divider sx={{ mt: 1 }} /></Grid>
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth required>
+              <FormControl fullWidth>
                 <InputLabel>Class</InputLabel>
                 <Select value={formData.schoolClass} onChange={(e) => setFormData({...formData, schoolClass: e.target.value, section: ''})} label="Class">
+                  <MenuItem value="">-- None --</MenuItem>
                   {classes.map((cls) => (
                     <MenuItem key={cls.id} value={cls.id}>{cls.name}</MenuItem>
                   ))}
@@ -504,9 +536,10 @@ export default function StudentManagement() {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth required>
+              <FormControl fullWidth>
                 <InputLabel>Section</InputLabel>
                 <Select value={formData.section} onChange={(e) => setFormData({...formData, section: e.target.value})} label="Section" disabled={!formData.schoolClass}>
+                  <MenuItem value="">-- None --</MenuItem>
                   {sections.map((sec) => (
                     <MenuItem key={sec.id} value={sec.id}>{sec.name}</MenuItem>
                   ))}
@@ -521,6 +554,11 @@ export default function StudentManagement() {
               <TextField fullWidth label="Admission Date" type="date" value={formData.admissionDate}
                 onChange={(e) => setFormData({...formData, admissionDate: e.target.value})}
                 InputLabelProps={{ shrink: true }} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField fullWidth label="Academic Year Fees (₹)" type="number" value={formData.academicYearFees}
+                onChange={(e) => setFormData({...formData, academicYearFees: e.target.value})}
+                inputProps={{ min: 0, step: 0.01 }} placeholder="e.g. 15000" />
             </Grid>
 
             {!isEdit && (<>
@@ -619,6 +657,8 @@ export default function StudentManagement() {
               <Grid item xs={6}><Typography variant="body2" color="text.secondary">Phone</Typography><Typography>{selectedStudent.phone || '-'}</Typography></Grid>
               <Grid item xs={6}><Typography variant="body2" color="text.secondary">Email</Typography><Typography>{selectedStudent.email || '-'}</Typography></Grid>
               <Grid item xs={12}><Typography variant="body2" color="text.secondary">Address</Typography><Typography>{selectedStudent.address || '-'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="body2" color="text.secondary">Aadhaar Number</Typography><Typography>{selectedStudent.aadharNumber || '-'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="body2" color="text.secondary">Academic Year Fees</Typography><Typography>{selectedStudent.academicYearFees != null ? `₹${selectedStudent.academicYearFees}` : '-'}</Typography></Grid>
             </Grid>
           )}
         </DialogContent>

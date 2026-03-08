@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -22,10 +23,10 @@ public class Student extends BaseEntity {
     @Column(name = "roll_no", length = 20)
     private String rollNo;
 
-    @Column(name = "first_name", nullable = false, length = 100)
+    @Column(name = "first_name", length = 100)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false, length = 100)
+    @Column(name = "last_name", length = 100)
     private String lastName;
 
     @Column(name = "date_of_birth")
@@ -77,4 +78,10 @@ public class Student extends BaseEntity {
 
     @Column(name = "previous_school", length = 200)
     private String previousSchool;
+
+    @Column(name = "aadhar_number", length = 20)
+    private String aadharNumber;
+
+    @Column(name = "academic_year_fees", precision = 10, scale = 2)
+    private BigDecimal academicYearFees;
 }

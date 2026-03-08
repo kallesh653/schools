@@ -31,6 +31,7 @@ import {
   AdminPanelSettings as AdminIcon,
   Settings as SettingsIcon,
   Sms as SmsIcon,
+  Assessment as ReportIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -47,6 +48,7 @@ const menuItems = [
   { text: 'Homework', icon: <BookIcon />, path: '/homework' },
   { text: 'Notices', icon: <NotificationsIcon />, path: '/notices' },
   { text: 'Communication', icon: <SmsIcon />, path: '/communication' },
+  { text: 'Reports', icon: <ReportIcon />, path: '/reports' },
   { text: 'Configuration', icon: <SettingsIcon />, path: '/configuration' },
 ];
 

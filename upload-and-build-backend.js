@@ -17,8 +17,32 @@ const FILES = [
     remote: `${REMOTE_BASE}/controller/TeacherController.java`,
   },
   {
+    local: path.join(ROOT, 'backend/src/main/java/com/school/controller/HomeworkController.java'),
+    remote: `${REMOTE_BASE}/controller/HomeworkController.java`,
+  },
+  {
     local: path.join(ROOT, 'backend/src/main/java/com/school/repository/TeacherSubjectAssignmentRepository.java'),
     remote: `${REMOTE_BASE}/repository/TeacherSubjectAssignmentRepository.java`,
+  },
+  {
+    local: path.join(ROOT, 'backend/src/main/java/com/school/repository/SchoolClassRepository.java'),
+    remote: `${REMOTE_BASE}/repository/SchoolClassRepository.java`,
+  },
+  {
+    local: path.join(ROOT, 'backend/src/main/java/com/school/entity/SchoolClass.java'),
+    remote: `${REMOTE_BASE}/entity/SchoolClass.java`,
+  },
+  {
+    local: path.join(ROOT, 'backend/src/main/java/com/school/entity/Student.java'),
+    remote: `${REMOTE_BASE}/entity/Student.java`,
+  },
+  {
+    local: path.join(ROOT, 'backend/src/main/java/com/school/dto/CreateStudentRequest.java'),
+    remote: `${REMOTE_BASE}/dto/CreateStudentRequest.java`,
+  },
+  {
+    local: path.join(ROOT, 'backend/src/main/java/com/school/controller/StudentController.java'),
+    remote: `${REMOTE_BASE}/controller/StudentController.java`,
   },
 ];
 
@@ -97,9 +121,16 @@ conn.on('ready', async () => {
     );
 
     console.log('\n✓ Backend restarted with updated endpoints:');
-    console.log('  GET  /teachers/assignments  (ADMIN)');
-    console.log('  POST /teachers/assignments  (ADMIN)');
-    console.log('  DELETE /teachers/assignments/{id}  (ADMIN)');
+    console.log('  GET    /teachers/assignments             (ADMIN)');
+    console.log('  POST   /teachers/assignments             (ADMIN)');
+    console.log('  DELETE /teachers/assignments/{id}        (ADMIN)');
+    console.log('  PUT    /teachers/{id}/class-teacher/{classId}  (ADMIN)');
+    console.log('  DELETE /teachers/class-teacher/{classId} (ADMIN)');
+    console.log('  GET    /teachers/class-teacher/{classId} (ALL)');
+    console.log('  GET    /teachers/my-class-teacher-info   (TEACHER)');
+    console.log('  POST   /homework  — fixed DTO response   (ADMIN/TEACHER)');
+    console.log('  Student entity: aadharNumber + academicYearFees fields added');
+    console.log('  Student creation/update: age validation (≥3 years)');
 
   } catch (e) {
     console.error('\nError:', e.message);

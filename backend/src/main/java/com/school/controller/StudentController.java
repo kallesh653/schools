@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.Random;
 
@@ -69,6 +70,16 @@ public class StudentController {
     @Transactional
     public ResponseEntity<?> createStudent(@RequestBody CreateStudentRequest request) {
         try {
+            // 0. Age validation — student must be at least 3 years old
+            if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
+                LocalDate dob = LocalDate.parse(request.getDateOfBirth());
+                int age = Period.between(dob, LocalDate.now()).getYears();
+                if (age < 3) {
+                    return ResponseEntity.badRequest()
+                            .body(new MessageResponse("Student must be at least 3 years old."));
+                }
+            }
+
             // 1. Create Parent entity
             Parent parent = new Parent();
             parent.setFatherName(request.getFatherName());
@@ -121,6 +132,8 @@ public class StudentController {
             student.setAdmissionNo(generateAdmissionNumber());
             student.setActive(true);
             student.setParent(savedParent);
+            if (request.getAadharNumber() != null) student.setAadharNumber(request.getAadharNumber());
+            if (request.getAcademicYearFees() != null) student.setAcademicYearFees(request.getAcademicYearFees());
             if (request.getClassId() != null) { SchoolClass cls = new SchoolClass(); cls.setId(request.getClassId()); student.setSchoolClass(cls); }
             if (request.getSectionId() != null) { Section sec = new Section(); sec.setId(request.getSectionId()); student.setSection(sec); }
             if (request.getAcademicYearId() != null) {
@@ -136,9 +149,17 @@ public class StudentController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Student> updateStudent(@PathVariable Long id, @RequestBody Student student) {
+    public ResponseEntity<?> updateStudent(@PathVariable Long id, @RequestBody Student student) {
         Student existing = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+        // Age validation
+        if (student.getDateOfBirth() != null) {
+            int age = Period.between(student.getDateOfBirth(), LocalDate.now()).getYears();
+            if (age < 3) {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Student must be at least 3 years old."));
+            }
+        }
         existing.setFirstName(student.getFirstName());
         existing.setLastName(student.getLastName());
         existing.setDateOfBirth(student.getDateOfBirth());
@@ -148,6 +169,8 @@ public class StudentController {
         existing.setPhone(student.getPhone());
         existing.setEmail(student.getEmail());
         existing.setRollNo(student.getRollNo());
+        if (student.getAadharNumber() != null) existing.setAadharNumber(student.getAadharNumber());
+        if (student.getAcademicYearFees() != null) existing.setAcademicYearFees(student.getAcademicYearFees());
         if (student.getSchoolClass() != null) existing.setSchoolClass(student.getSchoolClass());
         if (student.getSection() != null) existing.setSection(student.getSection());
         return ResponseEntity.ok(studentRepository.save(existing));

@@ -1,6 +1,7 @@
 package com.school.dto;
 
 import lombok.Data;
+import java.math.BigDecimal;
 
 @Data
 public class CreateStudentRequest {
@@ -37,4 +38,8 @@ public class CreateStudentRequest {
     private String motherOccupation;
     private String address2; // parent address
     private String emergencyContact;
+
+    // New optional fields
+    private String aadharNumber;
+    private BigDecimal academicYearFees;
 }
