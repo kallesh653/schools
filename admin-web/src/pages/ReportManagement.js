@@ -31,10 +31,10 @@ import {
 
 // ─── School info used in all PDF headers ─────────────────────────────────────
 const SCHOOL_INFO = {
-  name: 'School Management System',
-  address: 'School Address, City - 560001',
+  name: 'Sirigannada Pri-Primary & Higher Primary School',
+  address: 'Sirigannada, Karnataka',
   phone: '+91 9999999999',
-  email: 'admin@school.edu',
+  email: 'admin@sirigannada.school',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -156,6 +156,7 @@ export default function ReportManagement() {
   const [attEnd, setAttEnd] = useState(new Date().toISOString().split('T')[0]);
   const [attData, setAttData] = useState([]);
   const [attLoading, setAttLoading] = useState(false);
+  const [attSearch, setAttSearch] = useState('');
 
   // ── Fee Collection ──
   const [feeClass, setFeeClass] = useState('');
@@ -163,6 +164,8 @@ export default function ReportManagement() {
   const [feeSections, setFeeSections] = useState([]);
   const [feeData, setFeeData] = useState([]);
   const [feeLoading, setFeeLoading] = useState(false);
+  const [feeStatusFilter, setFeeStatusFilter] = useState('ALL');
+  const [feeSearch, setFeeSearch] = useState('');
 
   // ── Exam Timetable ──
   const [ttExam, setTtExam] = useState('');
@@ -811,19 +814,30 @@ export default function ReportManagement() {
   return (
     <Box>
       {/* Page Header */}
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar sx={{ bgcolor: '#1a237e', width: 50, height: 50 }}>
-          <ReportIcon sx={{ fontSize: 28 }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a237e', lineHeight: 1.1 }}>
-            Reports &amp; Documents
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Attendance · Fee Collection · Timetable · Marksheet · Admission Card · Fee Receipt
-          </Typography>
+      <Paper sx={{
+        mb: 3, p: 2.5, borderRadius: 3, overflow: 'hidden',
+        background: 'linear-gradient(135deg, #1a237e 0%, #4a148c 100%)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 52, height: 52 }}>
+            <ReportIcon sx={{ fontSize: 30, color: '#fff' }} />
+          </Avatar>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>
+              Reports &amp; Documents
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', display: 'block', mt: 0.3 }}>
+              Sirigannada Pri-Primary &amp; Higher Primary School — Generate filtered reports &amp; print documents
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {['Attendance', 'Fee', 'Timetable', 'Marksheet', 'Admission', 'Receipt'].map(t => (
+              <Chip key={t} label={t} size="small"
+                sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', fontWeight: 600, fontSize: 10 }} />
+            ))}
+          </Box>
         </Box>
-      </Box>
+      </Paper>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
@@ -854,15 +868,46 @@ export default function ReportManagement() {
               TAB 0 – ATTENDANCE REPORT
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <TabPanel value={tab} index={0}>
-            <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: '#f5f7fa' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, color: '#1565c0' }}>
-                <FilterIcon sx={{ fontSize: 18, verticalAlign: 'middle', mr: 0.5 }} /> Filter Options
-              </Typography>
+            <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: '#f5f7fa', border: '1.5px solid #c5cae9' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <FilterIcon sx={{ color: '#1565c0' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>
+                  Attendance Report — Filters
+                </Typography>
+                <Chip label="SIRIGANNADA SCHOOL" size="small" sx={{ ml: 'auto', bgcolor: '#1565c0', color: '#fff', fontWeight: 700, fontSize: 10 }} />
+              </Box>
+              {/* Date Presets */}
+              <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: '#666', alignSelf: 'center' }}>Quick Range:</Typography>
+                {[
+                  { label: 'Today', days: 0 },
+                  { label: 'This Week', days: 7 },
+                  { label: 'This Month', days: 30 },
+                  { label: 'Last Month', days: 60, offset: 30 },
+                  { label: 'This Year', days: 365 },
+                ].map(preset => (
+                  <Chip key={preset.label} label={preset.label} size="small" variant="outlined"
+                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#e3f2fd' } }}
+                    onClick={() => {
+                      const end = new Date();
+                      if (preset.offset) end.setDate(end.getDate() - preset.offset);
+                      const start = new Date(end);
+                      if (preset.days === 0) {
+                        setAttStart(end.toISOString().split('T')[0]);
+                        setAttEnd(new Date().toISOString().split('T')[0]);
+                      } else {
+                        start.setDate(start.getDate() - preset.days);
+                        setAttStart(start.toISOString().split('T')[0]);
+                        setAttEnd(new Date().toISOString().split('T')[0]);
+                      }
+                    }} />
+                ))}
+              </Stack>
               <Grid container spacing={2} alignItems="flex-end">
                 <Grid item xs={12} sm={3}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Class</InputLabel>
-                    <Select value={attClass} label="Class" onChange={e => {
+                    <InputLabel>Class *</InputLabel>
+                    <Select value={attClass} label="Class *" onChange={e => {
                       setAttClass(e.target.value); setAttSection('');
                       loadSections(e.target.value, setAttSections);
                     }}>
@@ -870,10 +915,10 @@ export default function ReportManagement() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={3}>
+                <Grid item xs={12} sm={2}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Section</InputLabel>
-                    <Select value={attSection} label="Section" onChange={e => setAttSection(e.target.value)}>
+                    <InputLabel>Section *</InputLabel>
+                    <Select value={attSection} label="Section *" onChange={e => setAttSection(e.target.value)}>
                       {attSections.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
                     </Select>
                   </FormControl>
@@ -888,12 +933,21 @@ export default function ReportManagement() {
                     InputLabelProps={{ shrink: true }} value={attEnd}
                     onChange={e => setAttEnd(e.target.value)} />
                 </Grid>
-                <Grid item xs={12} sm={2}>
+                <Grid item xs={12} sm={3}>
                   <Button fullWidth variant="contained" onClick={generateAttReport}
-                    disabled={attLoading} startIcon={attLoading ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}>
-                    Generate
+                    disabled={attLoading} startIcon={attLoading ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}
+                    sx={{ background: 'linear-gradient(135deg,#1565c0,#1a237e)', borderRadius: 2 }}>
+                    Generate Report
                   </Button>
                 </Grid>
+                {attData.length > 0 && (
+                  <Grid item xs={12}>
+                    <TextField fullWidth size="small" placeholder="Search student by name..."
+                      value={attSearch} onChange={e => setAttSearch(e.target.value)}
+                      InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1, color: '#bbb', fontSize: 18 }} /> }}
+                    />
+                  </Grid>
+                )}
               </Grid>
             </Paper>
 
@@ -951,7 +1005,7 @@ export default function ReportManagement() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {attData.map((r, i) => (
+                      {attData.filter(r => !attSearch || r.name?.toLowerCase().includes(attSearch.toLowerCase())).map((r, i) => (
                         <TableRow key={i} hover>
                           <TableCell>{i + 1}</TableCell>
                           <TableCell>{r.rollNo}</TableCell>
@@ -985,15 +1039,18 @@ export default function ReportManagement() {
               TAB 1 – FEE COLLECTION REPORT
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <TabPanel value={tab} index={1}>
-            <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: '#f5f7fa' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
-                <FilterIcon sx={{ fontSize: 18, verticalAlign: 'middle', mr: 0.5 }} /> Filter Options
-              </Typography>
+            <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: '#f1f8e9', border: '1.5px solid #a5d6a7' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <FilterIcon sx={{ color: '#2e7d32' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>
+                  Fee Collection Report — Filters
+                </Typography>
+              </Box>
               <Grid container spacing={2} alignItems="flex-end">
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={3}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Class</InputLabel>
-                    <Select value={feeClass} label="Class" onChange={e => {
+                    <InputLabel>Class *</InputLabel>
+                    <Select value={feeClass} label="Class *" onChange={e => {
                       setFeeClass(e.target.value); setFeeSection('');
                       loadSections(e.target.value, setFeeSections);
                     }}>
@@ -1001,24 +1058,45 @@ export default function ReportManagement() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={3}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Section (Optional)</InputLabel>
-                    <Select value={feeSection} label="Section (Optional)"
+                    <InputLabel>Section</InputLabel>
+                    <Select value={feeSection} label="Section"
                       onChange={e => setFeeSection(e.target.value)}>
                       <MenuItem value="">All Sections</MenuItem>
                       {feeSections.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Fee Status</InputLabel>
+                    <Select value={feeStatusFilter} label="Fee Status"
+                      onChange={e => setFeeStatusFilter(e.target.value)}>
+                      <MenuItem value="ALL">All Students</MenuItem>
+                      <MenuItem value="PAID">Paid Only</MenuItem>
+                      <MenuItem value="PARTIAL">Partial Payment</MenuItem>
+                      <MenuItem value="PENDING">Pending / Not Paid</MenuItem>
+                      <MenuItem value="OVERDUE">Balance &gt; 0</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={3}>
                   <Button fullWidth variant="contained"
-                    sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+                    sx={{ background: 'linear-gradient(135deg,#2e7d32,#1b5e20)', borderRadius: 2 }}
                     onClick={generateFeeReport} disabled={feeLoading}
                     startIcon={feeLoading ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}>
                     Generate Report
                   </Button>
                 </Grid>
+                {feeData.length > 0 && (
+                  <Grid item xs={12}>
+                    <TextField fullWidth size="small" placeholder="Search student by name..."
+                      value={feeSearch} onChange={e => setFeeSearch(e.target.value)}
+                      InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1, color: '#bbb', fontSize: 18 }} /> }}
+                    />
+                  </Grid>
+                )}
               </Grid>
             </Paper>
 
@@ -1067,8 +1145,18 @@ export default function ReportManagement() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {feeData.map((r, i) => (
-                          <TableRow key={i} hover>
+                        {feeData
+                          .filter(r => {
+                            const matchSearch = !feeSearch || r.name?.toLowerCase().includes(feeSearch.toLowerCase());
+                            const matchStatus = feeStatusFilter === 'ALL'
+                              || (feeStatusFilter === 'PAID' && r.status === 'PAID')
+                              || (feeStatusFilter === 'PARTIAL' && r.status === 'PARTIAL')
+                              || (feeStatusFilter === 'PENDING' && r.status !== 'PAID' && r.status !== 'PARTIAL')
+                              || (feeStatusFilter === 'OVERDUE' && r.balance > 0);
+                            return matchSearch && matchStatus;
+                          })
+                          .map((r, i) => (
+                          <TableRow key={i} hover sx={{ bgcolor: r.balance > 0 ? '#fff8f8' : 'inherit' }}>
                             <TableCell>{i + 1}</TableCell>
                             <TableCell>{r.rollNo}</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>{r.name}</TableCell>
